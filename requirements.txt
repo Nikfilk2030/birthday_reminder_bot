@@ -1,0 +1,4 @@
+python-telegram-bot==20.3
+mysql-connector-python==8.0.33
+apscheduler==3.10.0
+python-dotenv
