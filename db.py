@@ -13,10 +13,7 @@ logging.basicConfig(
 )
 
 
-def init_db():
-    """
-    Initialize the SQLite database by creating the `messages` table if it doesn't exist.
-    """
+def init_db() -> None:
     logging.debug(f"Initializing database at '{DB_FILE}'...")
     try:
         conn = sqlite3.connect(DB_FILE)
@@ -40,14 +37,7 @@ def init_db():
         raise
 
 
-def save_message(chat_id: int, user_message: str):
-    """
-    Save a message in the database.
-
-    Arguments:
-        chat_id (int): ID of the Telegram chat.
-        user_message (str): The message text sent by the user.
-    """
+def save_message(chat_id: int, user_message: str) -> None:
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -69,28 +59,19 @@ def save_message(chat_id: int, user_message: str):
 
 
 def get_all_messages(chat_id: int) -> list[str]:
-    """
-    Fetch all messages for a specific chat ID from the database.
-
-    Arguments:
-        chat_id (int): ID of the Telegram chat.
-
-    Returns:
-        list[str]: The list of messages.
-    """
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT user_message FROM messages WHERE chat_id = ?
+            SELECT * FROM messages WHERE chat_id = ?
         """,
             (chat_id,),
         )
         messages = cursor.fetchall()
         conn.close()
         logging.info(f"Retrieved messages for Chat ID {chat_id}: {messages}")
-        return [message[0] for message in messages]
+        return [str(message) for message in messages]
     except sqlite3.Error as e:
         logging.error(f"Error retrieving messages from database: {e}")
         raise

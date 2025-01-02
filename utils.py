@@ -62,15 +62,3 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
         return amount * TIME_MAP[unit]
 
     return None
-
-
-if __name__ == "__main__":
-    formats = get_possible_time_formats()
-    print("Possible time formats:", formats)
-
-    test_times = ["1 minute", "3 hours", "2 месяца", "15 h", "5  днЕй", "10    M"]
-
-    for timestamp in test_times:
-        valid = is_timestamp_valid(timestamp)
-        duration = get_time(timestamp)
-        print(f"'{timestamp}' is valid: {valid}, duration in minutes: {duration}")
