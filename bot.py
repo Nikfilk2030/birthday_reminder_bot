@@ -65,11 +65,11 @@ def send_welcome(message):
 @bot.message_handler(commands=["backup"])
 def send_backup(message):
     logging.info(f"Received /backup command from Chat ID {message.chat.id}")
-    all_messages = db.get_all_messages(message.chat.id)
+    all_messages = "\n".join(db.get_all_messages(message.chat.id))
 
     bot.send_message(
         message.chat.id,
-        f"Your messages: {all_messages if all_messages else 'No messages found.'}",
+        f"Your messages:\n{all_messages if all_messages else 'No messages found.'}",
         reply_markup=get_main_buttons(),
     )
     logging.debug(f"Sent backup messages to Chat ID {message.chat.id}: {all_messages}")
