@@ -25,14 +25,14 @@ if not TOKEN:
 
 bot = telebot.TeleBot(TOKEN)
 
+
 def get_main_buttons():
     markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
 
     buttons = [
         KeyboardButton("/start"),
-        KeyboardButton("/backup"),
         KeyboardButton("/help"),
-        KeyboardButton("/cancel"),
+        KeyboardButton("/backup"),
     ]
 
     for button in buttons:
