@@ -6,10 +6,8 @@ from dotenv import load_dotenv
 import os
 import logging
 
-# Import database API
 import db
 
-# Set up logging for main bot script
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -29,9 +27,6 @@ bot = telebot.TeleBot(TOKEN)
 
 
 def send_delayed_messages(chat_id, original_message):
-    """
-    Send delayed messages to the chat every minute for 5 minutes.
-    """
     for i in range(1, 6):
         bot.send_message(chat_id, f"Minute {i}: {original_message}")
         logging.debug(
@@ -42,9 +37,6 @@ def send_delayed_messages(chat_id, original_message):
 
 @bot.message_handler(commands=["start", "help"])
 def send_welcome(message):
-    """
-    Handle the /start and /help commands.
-    """
     logging.info(f"Received /start or /help command from Chat ID {message.chat.id}")
     markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
     btn = KeyboardButton("/start")
@@ -59,9 +51,6 @@ def send_welcome(message):
 
 @bot.message_handler(commands=["backup"])
 def send_backup(message):
-    """
-    Handle the /backup command by sending all stored messages back to the chat.
-    """
     logging.info(f"Received /backup command from Chat ID {message.chat.id}")
     markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
     btn = KeyboardButton("/backup")
@@ -77,17 +66,12 @@ def send_backup(message):
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
-    """
-    Handle any non-command messages from users.
-    """
     chat_id = message.chat.id
     user_message = message.text
     logging.info(f"Received message from Chat ID {chat_id}: {user_message}")
 
-    # Save the user's message in the database
     db.save_message(chat_id, user_message)
 
-    # Send immediate confirmation and start delayed messages
     bot.send_message(
         chat_id, "Got it! I'll send this message to you once a minute for 5 minutes."
     )
