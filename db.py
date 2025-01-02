@@ -3,7 +3,6 @@ import logging
 
 DB_FILE = "messages.db"
 
-# Initialize logging for the database module
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
