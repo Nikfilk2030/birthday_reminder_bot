@@ -1,156 +1,108 @@
-import asyncio
-import logging
-import os
-import mysql.connector
+import telebot
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import time
-
-from apscheduler.schedulers.background import BackgroundScheduler
+import threading
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext
+import os
+import logging
+
+# Import database API
+import db
+
+# Set up logging for main bot script
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler(),
+    ],
+)
 
 load_dotenv()
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    logging.critical("TELEGRAM_BOT_TOKEN is not set in the .env file!")
+    raise ValueError("TELEGRAM_BOT_TOKEN is not set in the .env file!")
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
-logger = logging.getLogger(__name__)
-
-DB_HOST = "mysql"
-DB_USER = "root"
-DB_PASSWORD = "rootpassword"
-DB_DATABASE = "telegram_bot"
+bot = telebot.TeleBot(TOKEN)
 
 
-def get_db_connection():
-    return mysql.connector.connect(
-        host=DB_HOST, user=DB_USER, password=DB_PASSWORD, database=DB_DATABASE
-    )
-
-
-# Command: '/start' - Register the user
-async def start(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    # Save user to DB if not already
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT IGNORE INTO users (telegram_id) VALUES (%s)", (user_id,)
-    )
-    conn.commit()
-    conn.close()
-    await update.message.reply_text("You are now registered! Use /configure to set up your messages.")
-
-
-# Command: '/configure' - Configure messages
-async def configure(update: Update, context: CallbackContext):
-    try:
-        # User must send: <Interval (mins)> <Message> <Count>
-        user_id = update.effective_user.id
-        args = context.args
-        if len(args) < 3:
-            await update.message.reply_text(
-                "Usage: /configure <Interval (mins)> <Message> <Count>"
-            )
-            return
-
-        interval = int(args[0])
-        message = " ".join(args[1:-1])  # Everything except last argument is the message
-        count = int(args[-1])
-
-        # Save configuration to the DB
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO user_configuration (telegram_id, message, interval_minutes, remaining_count)
-            VALUES (%s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-            message = VALUES(message), interval_minutes = VALUES(interval_minutes), remaining_count = VALUES(remaining_count)
-            """,
-            (user_id, message, interval, count),
+def send_delayed_messages(chat_id, original_message):
+    """
+    Send delayed messages to the chat every minute for 5 minutes.
+    """
+    for i in range(1, 6):
+        bot.send_message(chat_id, f"Minute {i}: {original_message}")
+        logging.debug(
+            f"Sent delayed message {i} to Chat ID {chat_id}: {original_message}"
         )
-        conn.commit()
-        conn.close()
-        await update.message.reply_text("Configuration saved successfully!")
-    except Exception as e:
-        logger.error(e)
-        await update.message.reply_text("An error occurred. Please try again!")
+        time.sleep(60)
 
 
-# Function to send pings
-async def send_pings(context: CallbackContext):
-    job = context.job
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    # Fetch message configurations for the user
-    cursor.execute("SELECT * FROM user_configuration WHERE remaining_count > 0")
-    rows = cursor.fetchall()
-
-    if not rows:
-        return
-
-    for row in rows:
-        telegram_id = row["telegram_id"]
-        message = row["message"]
-        remaining_count = row["remaining_count"]
-
-        # Send message
-        try:
-            await context.bot.send_message(chat_id=telegram_id, text=message)
-            remaining_count -= 1  # Decrease count
-            cursor.execute(
-                "UPDATE user_configuration SET remaining_count = %s WHERE id = %s",
-                (remaining_count, row["id"]),
-            )
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Could not send message to {telegram_id}: {e}")
-
-    conn.close()
+@bot.message_handler(commands=["start", "help"])
+def send_welcome(message):
+    """
+    Handle the /start and /help commands.
+    """
+    logging.info(f"Received /start or /help command from Chat ID {message.chat.id}")
+    markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+    btn = KeyboardButton("/start")
+    markup.add(btn)
+    bot.send_message(
+        message.chat.id,
+        "Hello! Send me a message and I'll repeat it once a minute for 5 minutes.",
+        reply_markup=markup,
+    )
+    logging.debug(f"Sent welcome message to Chat ID {message.chat.id}")
 
 
-# Function to handle missed pings
-def handle_missed_pings():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+@bot.message_handler(commands=["backup"])
+def send_backup(message):
+    """
+    Handle the /backup command by sending all stored messages back to the chat.
+    """
+    logging.info(f"Received /backup command from Chat ID {message.chat.id}")
+    markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+    btn = KeyboardButton("/backup")
+    markup.add(btn)
+    all_messages = db.get_all_messages(message.chat.id)
+    bot.send_message(
+        message.chat.id,
+        f"Your messages: {all_messages}",
+        reply_markup=markup,
+    )
+    logging.debug(f"Sent backup messages to Chat ID {message.chat.id}: {all_messages}")
 
-    one_hour_ago = datetime.now() - timedelta(hours=1)
-    cursor.execute("SELECT * FROM user_configuration WHERE last_sent < %s", (one_hour_ago,))
-    rows = cursor.fetchall()
 
-    for row in rows:
-        # Calculate the number of missed pings and send them
-        raise Exception('bebra')
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    """
+    Handle any non-command messages from users.
+    """
+    chat_id = message.chat.id
+    user_message = message.text
+    logging.info(f"Received message from Chat ID {chat_id}: {user_message}")
 
+    # Save the user's message in the database
+    db.save_message(chat_id, user_message)
 
-def main():
-    logger.info("bebra1")
-
-    # Set up scheduler
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(func=handle_missed_pings, trigger="interval", hours=1, id="missed_pings_job")
-    scheduler.start()
-
-    logger.info("bebra2")
-
-    # Telegram bot setup
-    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("configure", configure))
-
-    job_queue = application.job_queue
-    job_queue.run_repeating(send_pings, interval=60, first=10)  # Run every minute
-
-    application.run_polling()
+    # Send immediate confirmation and start delayed messages
+    bot.send_message(
+        chat_id, "Got it! I'll send this message to you once a minute for 5 minutes."
+    )
+    logging.debug(f"Sent confirmation message to Chat ID {chat_id}")
+    thread = threading.Thread(
+        target=send_delayed_messages, args=(chat_id, user_message)
+    )
+    thread.start()
 
 
 if __name__ == "__main__":
-    logger.info("bebra3")
-    asyncio.get_event_loop().run_until_complete(main())
+    db.init_db()
+
+    logging.info("Bot is running...")
+    try:
+        bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
+    except Exception as e:
+        logging.critical(f"Bot polling encountered an error: {e}")
