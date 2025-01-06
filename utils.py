@@ -1,3 +1,5 @@
+import logging
+
 import re
 from typing import List, Union
 
@@ -62,3 +64,10 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
         return amount * TIME_MAP[unit]
 
     return None
+
+
+def log_exception(exc: Exception):
+    """
+    Helper function to log exception details with full traceback.
+    """
+    logging.error(f"An exception occurred: {exc}", exc_info=True)
