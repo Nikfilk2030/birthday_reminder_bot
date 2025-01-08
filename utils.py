@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import datetime
 from typing import List, Union
 
 TDuration = int
@@ -63,6 +64,37 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
         return amount * TIME_MAP[unit]
 
     return None
+
+
+def parse_date(date_str: str) -> tuple[bool, datetime | None]:
+    current_year = datetime.now().year
+    date_parts = date_str.split()
+
+    try:
+        if len(date_parts) == 1:  # day.month or day.month.year
+            date_part = date_parts[0].split(".")
+            if len(date_part) == 2:
+                # Format: day.month, assume current year
+                day, month = map(int, date_part)
+                year = current_year
+            elif len(date_part) == 3:
+                # Format: day.month.year
+                day, month, year = map(int, date_part)
+            else:
+                return False, None
+        elif len(date_parts) == 2:
+            # Format: day.month age
+            date_part, age_str = date_parts
+            day, month = map(int, date_part.split("."))
+            birth_year = current_year - int(age_str)
+            year = birth_year
+        else:
+            return False, None
+
+        parsed_date = datetime(year, month, day)
+        return True, parsed_date
+    except ValueError:
+        return False, None
 
 
 def log_exception(exc: Exception):
