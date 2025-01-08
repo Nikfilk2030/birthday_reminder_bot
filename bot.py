@@ -39,20 +39,23 @@ class TUserState(enum.Enum):
 class TCommand(enum.Enum):
     Start = "start"
     Backup = "backup"
-    Register = "register"
-    Unregister = "unregister"
+    RegisterBackup = "register_backup"
+    UnregisterBackup = "unregister_backup"
 
 
 button_to_command = {
     "🚀 Start": TCommand.Start,
     "/start": TCommand.Start,
     "/help": TCommand.Start,
+    #
     "💾 Backup": TCommand.Backup,
     "/backup": TCommand.Backup,
-    "🔐 Register": TCommand.Register,
-    "/register": TCommand.Register,
-    "🚫 Unregister": TCommand.Unregister,
-    "/unregister": TCommand.Unregister,
+    #
+    "🔐 Register Backup": TCommand.RegisterBackup,
+    "/register_backup": TCommand.RegisterBackup,
+    #
+    "🚫 Unregister Backup": TCommand.UnregisterBackup,
+    "/unregister_backup": TCommand.UnregisterBackup,
 }
 
 
@@ -62,8 +65,8 @@ def get_main_buttons():
     buttons = [
         KeyboardButton("🚀 Start"),
         KeyboardButton("💾 Backup"),
-        KeyboardButton("🔐 Register"),
-        KeyboardButton("🚫 Unregister"),
+        KeyboardButton("🔐 Register Backup"),
+        KeyboardButton("🚫 Unregister Backup"),
     ]
 
     markup.add(*buttons)
@@ -80,7 +83,6 @@ def send_delayed_messages(chat_id, original_message):
         time.sleep(60)
 
 
-@bot.message_handler(commands=["start", "🟢 Start", "help"])
 def handle_start(message):
     logging.info(f"Received /start or /help command from Chat ID {message.chat.id}")
 
@@ -101,7 +103,6 @@ def handle_start(message):
     logging.debug(f"Sent welcome message to Chat ID {message.chat.id}")
 
 
-@bot.message_handler(commands=["backup"])
 def send_backup(message):
     logging.info(f"Received /backup command from Chat ID {message.chat.id}")
     all_messages = "\n".join(db.get_all_messages(message.chat.id))
@@ -154,7 +155,6 @@ def process_backup_pings():
             utils.log_exception(e)
 
 
-@bot.message_handler(commands=["register"])
 def register_backup(message):
     chat_id = message.chat.id
 
@@ -168,7 +168,6 @@ def register_backup(message):
     logging.info(f"Awaiting interval input for Chat ID {chat_id}.")
 
 
-@bot.message_handler(commands=["unregister"])
 def unregister_backup(message):
     chat_id = message.chat.id
     db.unregister_backup_ping(chat_id)
@@ -195,10 +194,10 @@ def handle_message(message):
             case TCommand.Backup:
                 send_backup(message)
                 return
-            case TCommand.Register:
+            case TCommand.RegisterBackup:
                 register_backup(message)
                 return
-            case TCommand.Unregister:
+            case TCommand.UnregisterBackup:
                 unregister_backup(message)
                 return
             case _:
