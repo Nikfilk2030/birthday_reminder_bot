@@ -1,10 +1,12 @@
-import telebot
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-import time
-import threading
-from dotenv import load_dotenv
-import os
+import enum
 import logging
+import os
+import threading
+import time
+
+import telebot
+from dotenv import load_dotenv
+from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 
 import db
 import utils
@@ -26,19 +28,45 @@ if not TOKEN:
 
 bot = telebot.TeleBot(TOKEN)
 
+user_states = {}
+
+
+class TUserState(enum.Enum):
+    Default = "default"
+    AwaitingInterval = "awaiting_interval"
+
+
+class TCommand(enum.Enum):
+    Start = "start"
+    Backup = "backup"
+    Register = "register"
+    Unregister = "unregister"
+
+
+button_to_command = {
+    "🚀 Start": TCommand.Start,
+    "/start": TCommand.Start,
+    "/help": TCommand.Start,
+    "💾 Backup": TCommand.Backup,
+    "/backup": TCommand.Backup,
+    "🔐 Register": TCommand.Register,
+    "/register": TCommand.Register,
+    "🚫 Unregister": TCommand.Unregister,
+    "/unregister": TCommand.Unregister,
+}
+
 
 def get_main_buttons():
-    markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+    markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
 
     buttons = [
-        KeyboardButton("/start"),
-        KeyboardButton("/backup"),
-        KeyboardButton("/register"),
-        KeyboardButton("/unregister"),
+        KeyboardButton("🚀 Start"),
+        KeyboardButton("💾 Backup"),
+        KeyboardButton("🔐 Register"),
+        KeyboardButton("🚫 Unregister"),
     ]
 
-    for button in buttons:
-        markup.add(button)
+    markup.add(*buttons)
 
     return markup
 
@@ -52,11 +80,12 @@ def send_delayed_messages(chat_id, original_message):
         time.sleep(60)
 
 
-@bot.message_handler(commands=["start", "help"])
-def send_welcome(message):
+@bot.message_handler(commands=["start", "🟢 Start", "help"])
+def handle_start(message):
     logging.info(f"Received /start or /help command from Chat ID {message.chat.id}")
 
-    # get info about backup settings
+    user_states[message.chat.id] = TUserState.Default
+
     backup_ping_settings = db.select_from_backup_ping(message.chat.id)
     if backup_ping_settings.is_active:
         backup_ping_msg = f"You have an active backup ping every {backup_ping_settings.update_timedelta} minute(s).\n"
@@ -97,7 +126,7 @@ def process_backup_pings():
 
                 backup_ping_settings = db.select_from_backup_ping(chat_id)
 
-                if backup_ping_settings.is_active == False:
+                if backup_ping_settings.is_active is False:
                     continue
 
                 now = int(time.time())
@@ -128,40 +157,15 @@ def process_backup_pings():
 @bot.message_handler(commands=["register"])
 def register_backup(message):
     chat_id = message.chat.id
-    user_message = message.text
 
-    try:
-        user_message = user_message.replace("/register", "").strip()
+    bot.send_message(
+        chat_id,
+        "Please enter the interval at which to send backup (1 month, 1year, 1год, etc).",
+        reply_markup=get_main_buttons(),
+    )
 
-        if not utils.is_timestamp_valid(user_message):
-            bot.send_message(
-                chat_id,
-                "Invalid input format. Please use the following format: `/register [interval] month`, or `/register [interval] месяцев`",
-                reply_markup=get_main_buttons(),
-            )
-            return
-
-        interval_in_minutes = utils.get_time(user_message)
-
-        db.register_backup_ping(chat_id, interval_in_minutes)
-
-        bot.send_message(
-            chat_id,
-            f"Auto-backup registered! You'll receive backups every {interval_in_minutes} minute(s).",
-            reply_markup=get_main_buttons(),
-        )
-        logging.info(
-            f"Registered auto-backup for Chat ID {chat_id} with interval {interval_in_minutes} minute(s)."
-        )
-
-    except Exception as e:
-        logging.error(f"Error processing /register command for Chat ID {chat_id}: {e}")
-        bot.send_message(
-            chat_id,
-            "Invalid input format. Please use the following format: `/register [interval]m`, e.g., `/register 1m`.",
-            reply_markup=get_main_buttons(),
-        )
-        utils.log_exception(e)
+    user_states[chat_id] = TUserState.AwaitingInterval
+    logging.info(f"Awaiting interval input for Chat ID {chat_id}.")
 
 
 @bot.message_handler(commands=["unregister"])
@@ -179,35 +183,73 @@ def unregister_backup(message):
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     chat_id = message.chat.id
-    user_message = message.text
+    user_message = message.text.strip()
     logging.info(f"Received message from Chat ID {chat_id}: {user_message}")
 
-    # # Interpret user-specific buttons
-    # if user_message.lower() == "help":
-    #     bot.send_message(
-    #         chat_id,
-    #         "This is a help message! Use /backup to see all your saved messages, "
-    #         "/start to restart the bot, or simply type a message to save it.",
-    #         reply_markup=get_main_buttons(),
-    #     )
-    #     return
-    # elif user_message.lower() == "cancel":
-    #     bot.send_message(chat_id, "Action canceled.", reply_markup=get_main_buttons())
-    #     return
+    global button_to_command
+    if message.text in button_to_command.keys():
+        match button_to_command[message.text]:
+            case TCommand.Start:
+                handle_start(message)
+                return
+            case TCommand.Backup:
+                send_backup(message)
+                return
+            case TCommand.Register:
+                register_backup(message)
+                return
+            case TCommand.Unregister:
+                unregister_backup(message)
+                return
+            case _:
+                raise ValueError("Unknown command")
 
-    db.save_message(chat_id, user_message)
+    match user_states.get(chat_id):
+        case TUserState.AwaitingInterval:
+            try:
+                if not utils.is_timestamp_valid(user_message):
+                    raise ValueError("Invalid format")
 
-    bot.send_message(
-        chat_id,
-        "Got it! I'll send this message to you once a minute for 5 minutes.",
-        reply_markup=get_main_buttons(),
-    )
-    logging.debug(f"Sent confirmation message to Chat ID {chat_id}")
+                interval_in_minutes = utils.get_time(user_message)
 
-    thread = threading.Thread(
-        target=send_delayed_messages, args=(chat_id, user_message)
-    )
-    thread.start()
+                db.register_backup_ping(chat_id, interval_in_minutes)
+
+                bot.send_message(
+                    chat_id,
+                    f"Auto-backup registered! You'll receive backups every {interval_in_minutes} minute(s).",
+                    reply_markup=get_main_buttons(),
+                )
+                logging.info(
+                    f"Registered auto-backup for Chat ID {chat_id} with interval {interval_in_minutes} minute(s)."
+                )
+
+                user_states[chat_id] = None
+
+            except Exception as e:
+                logging.error(
+                    f"Error processing interval input for Chat ID {chat_id}: {e}"
+                )
+                bot.send_message(
+                    chat_id,
+                    "Invalid interval format. Please try again using a format like '1 month'.",
+                    reply_markup=get_main_buttons(),
+                )
+                utils.log_exception(e)
+
+        case _:  # TODO change to default?
+            db.save_message(chat_id, user_message)
+
+            bot.send_message(
+                chat_id,
+                "Got it! I'll send this message to you once a minute for 5 minutes.",
+                reply_markup=get_main_buttons(),
+            )
+            logging.debug(f"Sent confirmation message to Chat ID {chat_id}")
+
+            thread = threading.Thread(
+                target=send_delayed_messages, args=(chat_id, user_message)
+            )
+            thread.start()
 
 
 if __name__ == "__main__":

@@ -171,4 +171,4 @@ cython_debug/
 .pypirc
 
 # database:
-messages.db
+*.db
