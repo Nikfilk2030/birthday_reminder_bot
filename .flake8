@@ -1,0 +1,20 @@
+[flake8]
+# Set maximum allowed line length
+max-line-length = 200
+
+# Exclude some common directories
+exclude = 
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv
+
+# Configure format and output options
+format = default
+statistics = True
+count = True
+
+# Optionally, add plugins configuration if you use any
+# max-complexity could be set if you want to limit cyclomatic complexity
+# max-complexity = 10

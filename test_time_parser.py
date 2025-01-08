@@ -1,6 +1,6 @@
 import unittest
 
-from utils import get_possible_time_formats, is_timestamp_valid, get_time
+from utils import get_time, is_timestamp_valid
 
 
 class TestTimestampParser(unittest.TestCase):
