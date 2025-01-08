@@ -68,6 +68,16 @@ def init_db() -> None:
             );
         """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS birthdays (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                birthday DATE NOT NULL
+            );
+        """
+        )
 
         conn.commit()
         conn.close()
@@ -100,13 +110,14 @@ def save_message(chat_id: int, user_message: str) -> None:
         raise
 
 
+# TODO rename to get_all_birthdays
 def get_all_messages(chat_id: int) -> list[str]:
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT * FROM messages WHERE chat_id = ?
+            SELECT * FROM birthdays WHERE chat_id = ?
         """,
             (chat_id,),
         )
@@ -223,5 +234,30 @@ def select_from_backup_ping(chat_id: int) -> TBackupPingSettings:
         return TBackupPingSettings(data)
     except sqlite3.Error as e:
         logging.error(f"Error retrieving last backup sent: {e}")
+        utils.log_exception(e)
+        raise
+
+
+def register_birthday(chat_id: int, name: str, birthday: datetime) -> None:
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        birthday_str = birthday.strftime("%Y-%m-%d")
+
+        cursor.execute(
+            """
+            INSERT INTO birthdays (chat_id, name, birthday)
+            VALUES (?, ?, ?)
+            """,
+            (chat_id, name, birthday_str),
+        )
+        conn.commit()
+        conn.close()
+        logging.info(
+            f"Birthday registered: [Chat ID: {chat_id}, Name: {name}, Birthday: {birthday_str}]"
+        )
+    except sqlite3.Error as e:
+        logging.error(f"Error registering birthday: {e}")
         utils.log_exception(e)
         raise

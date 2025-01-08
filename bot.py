@@ -167,13 +167,21 @@ def register_birthday(message):
     bot.send_message(
         chat_id,
         (
-            "Please enter the birthday details in the following format:\n"
+            "*Please enter the birthday details in the following format:*\n"
             "1. First line: Name (and surname)\n"
-            "2. Second line: Date of birth (e.g., DD/MM/YYYY)\n\n"
-            "Example:\n"
+            "2. Second line: Date of birth\n"
+            "\n"
+            "*Possible formats:*\n"
+            "- day.month.year  (5.06.2001)\n"
+            "- day.month (5.06)\n"
+            "- day.month age (5.06 19)\n"
+            "\n"
+            "*Example:*\n"
             "John Doe\n"
-            "15/05/1990"
+            "15.05.1990"
+            "\n\n"
         ),
+        parse_mode="Markdown",
         reply_markup=get_main_buttons(),
     )
 
@@ -313,27 +321,19 @@ def handle_message(message):
                 name = splitted_message[0]
                 date = splitted_message[1]
 
-                # if not utils.is_name_valid(name):
-                #     raise ValueError("Invalid name format")
+                success, parsed_date = utils.parse_date(date)
 
-                # if not utils.is_date_valid(date):
-                #     raise ValueError("Invalid date format")
+                if not success:
+                    raise ValueError("Invalid date format")
 
-                # db.register_birthday(chat_id, user_message)
-
-                # bot.send_message(
-                #     chat_id,
-                #     "Birthday registered!",
-                #     reply_markup=get_main_buttons(),
-                # )
-                # logging.info(f"Registered birthday for Chat ID {chat_id}.")
+                db.register_birthday(chat_id, name, parsed_date)
 
                 bot.send_message(
                     chat_id,
-                    f"Name: {name}\nDate: {date}",
+                    f"Birthday registered! Name: {name}, Date: {parsed_date}",
                     reply_markup=get_main_buttons(),
                 )
-                logging.info(f"Sent birthday details to Chat ID {chat_id}.")
+                logging.info(f"Registered birthday for Chat ID {chat_id}.")
 
                 user_states[chat_id] = None
 
