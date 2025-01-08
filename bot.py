@@ -34,11 +34,13 @@ user_states = {}
 class TUserState(enum.Enum):
     Default = "default"
     AwaitingInterval = "awaiting_interval"
+    AwaitingNameAndDate = "awaiting_name_and_date"
 
 
 class TCommand(enum.Enum):
     Start = "start"
     Backup = "backup"
+    RegisterBirthday = "register_birthday"
     RegisterBackup = "register_backup"
     UnregisterBackup = "unregister_backup"
 
@@ -50,6 +52,9 @@ button_to_command = {
     #
     "💾 Backup": TCommand.Backup,
     "/backup": TCommand.Backup,
+    #
+    "🎉 Register Birthday": TCommand.RegisterBirthday,
+    "/register_birthday": TCommand.RegisterBirthday,
     #
     "🔐 Register Backup": TCommand.RegisterBackup,
     "/register_backup": TCommand.RegisterBackup,
@@ -65,6 +70,7 @@ def get_main_buttons():
     buttons = [
         KeyboardButton("🚀 Start"),
         KeyboardButton("💾 Backup"),
+        KeyboardButton("🎉 Register Birthday"),
         KeyboardButton("🔐 Register Backup"),
         KeyboardButton("🚫 Unregister Backup"),
     ]
@@ -113,6 +119,66 @@ def send_backup(message):
         reply_markup=get_main_buttons(),
     )
     logging.debug(f"Sent backup messages to Chat ID {message.chat.id}: {all_messages}")
+
+
+# def process_birthday_pings():
+#     while True:
+#         time.sleep(60)
+#         try:
+#             all_chat_ids = db.get_all_chat_ids()
+#             logging.debug(f"Processing backup pings for Chat IDs: {all_chat_ids}")
+
+#             for chat_id in all_chat_ids:
+#                 chat_id = chat_id[0]
+
+#                 backup_ping_settings = db.select_from_backup_ping(chat_id)
+
+#                 if backup_ping_settings.is_active is False:
+#                     continue
+
+#                 now = int(time.time())
+#                 delta_seconds = now - backup_ping_settings.last_updated_timestamp
+#                 settings_delta_seconds = backup_ping_settings.update_timedelta * 60
+
+#                 if delta_seconds < settings_delta_seconds:
+#                     continue
+
+#                 db.update_backup_ping(chat_id)
+
+#                 all_messages = "\n".join(db.get_all_messages(chat_id))
+#                 if all_messages:
+#                     bot.send_message(
+#                         chat_id,
+#                         f"Here's your latest backup:\n{all_messages}",
+#                     )
+#                     logging.info(f"Sent backup to Chat ID {chat_id}.")
+#                 else:
+#                     bot.send_message(chat_id, "You have no saved messages.")
+#                     logging.info(f"No messages found for Chat ID {chat_id}.")
+
+#         except Exception as e:
+#             logging.error(f"Error during backup ping processing: {e}")
+#             utils.log_exception(e)
+
+
+def register_birthday(message):
+    chat_id = message.chat.id
+
+    bot.send_message(
+        chat_id,
+        (
+            "Please enter the birthday details in the following format:\n"
+            "1. First line: Name (and surname)\n"
+            "2. Second line: Date of birth (e.g., DD/MM/YYYY)\n\n"
+            "Example:\n"
+            "John Doe\n"
+            "15/05/1990"
+        ),
+        reply_markup=get_main_buttons(),
+    )
+
+    user_states[chat_id] = TUserState.AwaitingNameAndDate
+    logging.info(f"Awaiting name input for Chat ID {chat_id}.")
 
 
 def process_backup_pings():
@@ -194,6 +260,9 @@ def handle_message(message):
             case TCommand.Backup:
                 send_backup(message)
                 return
+            case TCommand.RegisterBirthday:
+                register_birthday(message)
+                return
             case TCommand.RegisterBackup:
                 register_backup(message)
                 return
@@ -234,7 +303,48 @@ def handle_message(message):
                     reply_markup=get_main_buttons(),
                 )
                 utils.log_exception(e)
+        case TUserState.AwaitingNameAndDate:
+            try:
+                splitted_message = user_message.split("\n")
 
+                if len(splitted_message) != 2:
+                    raise ValueError("Invalid format")
+
+                name = splitted_message[0]
+                date = splitted_message[1]
+
+                # if not utils.is_name_valid(name):
+                #     raise ValueError("Invalid name format")
+
+                # if not utils.is_date_valid(date):
+                #     raise ValueError("Invalid date format")
+
+                # db.register_birthday(chat_id, user_message)
+
+                # bot.send_message(
+                #     chat_id,
+                #     "Birthday registered!",
+                #     reply_markup=get_main_buttons(),
+                # )
+                # logging.info(f"Registered birthday for Chat ID {chat_id}.")
+
+                bot.send_message(
+                    chat_id,
+                    f"Name: {name}\nDate: {date}",
+                    reply_markup=get_main_buttons(),
+                )
+                logging.info(f"Sent birthday details to Chat ID {chat_id}.")
+
+                user_states[chat_id] = None
+
+            except Exception as e:
+                logging.error(f"Error processing name input for Chat ID {chat_id}: {e}")
+                bot.send_message(
+                    chat_id,
+                    "Invalid name format. Please try again using a format like 'John Doe'.",
+                    reply_markup=get_main_buttons(),
+                )
+                utils.log_exception(e)
         case _:  # TODO change to default?
             db.save_message(chat_id, user_message)
 
@@ -259,6 +369,10 @@ if __name__ == "__main__":
         logging.info("Starting backup ping thread...")
         thread = threading.Thread(target=process_backup_pings)
         thread.start()
+
+        # logging.info("Starting birthday ping thread...")
+        # thread = threading.Thread(target=process_birthday_pings)
+        # thread.start()
 
         bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
 
