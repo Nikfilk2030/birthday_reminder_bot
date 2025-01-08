@@ -66,6 +66,7 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
     return None
 
 
+# TODO сюда можно припилить логику "если год не указан, мы не скажем возраст"
 def parse_date(date_str: str) -> tuple[bool, datetime | None]:
     current_year = datetime.now().year
     date_parts = date_str.split()
