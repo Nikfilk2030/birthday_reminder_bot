@@ -74,7 +74,11 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
-                birthday DATE NOT NULL
+                birthday DATE NOT NULL,
+                was_reminded_0_days_ago BOOLEAN DEFAULT FALSE,
+                was_reminded_1_days_ago BOOLEAN DEFAULT FALSE,
+                was_reminded_3_days_ago BOOLEAN DEFAULT FALSE,
+                was_reminded_7_days_ago BOOLEAN DEFAULT FALSE
             );
         """
         )
@@ -250,20 +254,70 @@ def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
         start_date_str = today.strftime("%m-%d")
         end_date_str = future_date.strftime("%m-%d")
 
-        cursor.execute(
-            """
-            SELECT chat_id, name, birthday FROM birthdays
+        reminder_field = f"was_reminded_{days_ahead}_days_ago"
+
+        query = f"""
+            SELECT id, chat_id, name, birthday FROM birthdays
             WHERE strftime('%m-%d', birthday) BETWEEN ? AND ?
-            """,
-            (start_date_str, end_date_str),
-        )
+            AND {reminder_field} = FALSE
+        """
+
+        cursor.execute(query, (start_date_str, end_date_str))
 
         birthdays = cursor.fetchall()
         conn.close()
-        logging.info(f"Retrieved upcoming birthdays: {birthdays}")
+        logging.info(f"Retrieved upcoming birthdays (excluding reminded): {birthdays}")
 
         return birthdays
     except sqlite3.Error as e:
         logging.error(f"Error retrieving upcoming birthdays: {e}")
+        utils.log_exception(e)
+        raise
+
+
+def mark_birthday_reminder_sent(birthday_id: int, days_ago: int) -> None:
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        reminder_field = f"was_reminded_{days_ago}_days_ago"
+        cursor.execute(
+            f"""
+            UPDATE birthdays
+            SET {reminder_field} = TRUE
+            WHERE id = ?
+            """,
+            (birthday_id,),
+        )
+
+        conn.commit()
+        conn.close()
+        logging.info(
+            f"Marked reminder as sent for Birthday ID {birthday_id}, {days_ago} days ago."
+        )
+    except sqlite3.Error as e:
+        logging.error(f"Error marking reminder as sent: {e}")
+        utils.log_exception(e)
+        raise
+
+
+def delete_birthday(birthday_id: int) -> None:
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            DELETE FROM birthdays
+            WHERE id = ?
+            """,
+            (birthday_id,),
+        )
+
+        conn.commit()
+        conn.close()
+        logging.info(f"Deleted Birthday ID {birthday_id}")
+    except sqlite3.Error as e:
+        logging.error(f"Error deleting birthday: {e}")
         utils.log_exception(e)
         raise
