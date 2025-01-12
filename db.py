@@ -1,6 +1,6 @@
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import utils
 
@@ -236,5 +236,34 @@ def register_birthday(chat_id: int, name: str, birthday: datetime) -> None:
         )
     except sqlite3.Error as e:
         logging.error(f"Error registering birthday: {e}")
+        utils.log_exception(e)
+        raise
+
+
+def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        today = datetime.now()
+        future_date = today + timedelta(days=days_ahead)
+        start_date_str = today.strftime("%m-%d")
+        end_date_str = future_date.strftime("%m-%d")
+
+        cursor.execute(
+            """
+            SELECT chat_id, name, birthday FROM birthdays
+            WHERE strftime('%m-%d', birthday) BETWEEN ? AND ?
+            """,
+            (start_date_str, end_date_str),
+        )
+
+        birthdays = cursor.fetchall()
+        conn.close()
+        logging.info(f"Retrieved upcoming birthdays: {birthdays}")
+
+        return birthdays
+    except sqlite3.Error as e:
+        logging.error(f"Error retrieving upcoming birthdays: {e}")
         utils.log_exception(e)
         raise

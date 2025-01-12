@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime
 
 import telebot
 from dotenv import load_dotenv
@@ -113,12 +114,42 @@ def send_backup(message):
 
 
 def process_birthday_pings():
+    days_notice = [0, 1, 3, 7]  # Customize days for reminders
     while True:
-        time.sleep(60)
         try:
-            pass
+            time.sleep(60)  # TODO Check every hour
+
+            logging.info("Checking for upcoming birthdays...")
+
+            for days in days_notice:
+                upcoming_birthdays = db.get_upcoming_birthdays(days)
+                logging.info(f"bebta {days}")
+                for chat_id, name, birthday_str in upcoming_birthdays:
+                    logging.info(f"bebta chat_id {chat_id}")
+                    birthday = datetime.strptime(birthday_str, "%Y-%m-%d")
+                    current_year = datetime.now().year
+                    birthday_this_year = birthday.replace(year=current_year)
+                    logging.info(f"bebta birthday_this_year {birthday_this_year}")
+                    logging.info(f"bebta datetime.now() {datetime.now()}")
+
+                    # get 00:00 of today:
+                    today = datetime.now().replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+
+                    if (birthday_this_year - today).days == days:
+                        logging.info("got into if")
+                        if days == 0:
+                            reminder_text = f"Today is {name}'s birthday! 🎂"
+                        else:
+                            reminder_text = f"{name}'s birthday is in {days} days!"
+
+                        bot.send_message(chat_id, reminder_text)
+                        logging.info(
+                            f"Sent reminder to Chat ID {chat_id}: {reminder_text}"
+                        )
         except Exception as e:
-            logging.error(f"Error during backup ping processing: {e}")
+            logging.error(f"Error during birthday ping processing: {e}")
             utils.log_exception(e)
 
 
