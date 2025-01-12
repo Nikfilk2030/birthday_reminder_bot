@@ -80,15 +80,6 @@ def get_main_buttons():
     return markup
 
 
-def send_delayed_messages(chat_id, original_message):
-    for i in range(1, 6):
-        bot.send_message(chat_id, f"Minute {i}: {original_message}")
-        logging.debug(
-            f"Sent delayed message {i} to Chat ID {chat_id}: {original_message}"
-        )
-        time.sleep(60)
-
-
 def handle_start(message):
     logging.info(f"Received /start or /help command from Chat ID {message.chat.id}")
 
@@ -111,7 +102,7 @@ def handle_start(message):
 
 def send_backup(message):
     logging.info(f"Received /backup command from Chat ID {message.chat.id}")
-    all_messages = "\n".join(db.get_all_messages(message.chat.id))
+    all_messages = "\n".join(db.get_all_birthdays(message.chat.id))
 
     bot.send_message(
         message.chat.id,
@@ -121,44 +112,14 @@ def send_backup(message):
     logging.debug(f"Sent backup messages to Chat ID {message.chat.id}: {all_messages}")
 
 
-# def process_birthday_pings():
-#     while True:
-#         time.sleep(60)
-#         try:
-#             all_chat_ids = db.get_all_chat_ids()
-#             logging.debug(f"Processing backup pings for Chat IDs: {all_chat_ids}")
-
-#             for chat_id in all_chat_ids:
-#                 chat_id = chat_id[0]
-
-#                 backup_ping_settings = db.select_from_backup_ping(chat_id)
-
-#                 if backup_ping_settings.is_active is False:
-#                     continue
-
-#                 now = int(time.time())
-#                 delta_seconds = now - backup_ping_settings.last_updated_timestamp
-#                 settings_delta_seconds = backup_ping_settings.update_timedelta * 60
-
-#                 if delta_seconds < settings_delta_seconds:
-#                     continue
-
-#                 db.update_backup_ping(chat_id)
-
-#                 all_messages = "\n".join(db.get_all_messages(chat_id))
-#                 if all_messages:
-#                     bot.send_message(
-#                         chat_id,
-#                         f"Here's your latest backup:\n{all_messages}",
-#                     )
-#                     logging.info(f"Sent backup to Chat ID {chat_id}.")
-#                 else:
-#                     bot.send_message(chat_id, "You have no saved messages.")
-#                     logging.info(f"No messages found for Chat ID {chat_id}.")
-
-#         except Exception as e:
-#             logging.error(f"Error during backup ping processing: {e}")
-#             utils.log_exception(e)
+def process_birthday_pings():
+    while True:
+        time.sleep(60)
+        try:
+            pass
+        except Exception as e:
+            logging.error(f"Error during backup ping processing: {e}")
+            utils.log_exception(e)
 
 
 def register_birthday(message):
@@ -213,7 +174,7 @@ def process_backup_pings():
 
                 db.update_backup_ping(chat_id)
 
-                all_messages = "\n".join(db.get_all_messages(chat_id))
+                all_messages = "\n".join(db.get_all_birthdays(chat_id))
                 if all_messages:
                     bot.send_message(
                         chat_id,
@@ -345,20 +306,12 @@ def handle_message(message):
                     reply_markup=get_main_buttons(),
                 )
                 utils.log_exception(e)
-        case _:  # TODO change to default?
-            db.save_message(chat_id, user_message)
-
+        case _:
             bot.send_message(
                 chat_id,
-                "Got it! I'll send this message to you once a minute for 5 minutes.",
+                "Unknown command. Send /start to see available commands.",
                 reply_markup=get_main_buttons(),
             )
-            logging.debug(f"Sent confirmation message to Chat ID {chat_id}")
-
-            thread = threading.Thread(
-                target=send_delayed_messages, args=(chat_id, user_message)
-            )
-            thread.start()
 
 
 if __name__ == "__main__":
@@ -370,9 +323,9 @@ if __name__ == "__main__":
         thread = threading.Thread(target=process_backup_pings)
         thread.start()
 
-        # logging.info("Starting birthday ping thread...")
-        # thread = threading.Thread(target=process_birthday_pings)
-        # thread.start()
+        logging.info("Starting birthday ping thread...")
+        thread = threading.Thread(target=process_birthday_pings)
+        thread.start()
 
         bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
 
