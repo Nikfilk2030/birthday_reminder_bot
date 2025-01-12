@@ -36,6 +36,7 @@ class TUserState(enum.Enum):
     Default = "default"
     AwaitingInterval = "awaiting_interval"
     AwaitingNameAndDate = "awaiting_name_and_date"
+    AwaitingDeletion = "awaiting_deletion"
 
 
 class TCommand(enum.Enum):
@@ -44,6 +45,7 @@ class TCommand(enum.Enum):
     RegisterBirthday = "register_birthday"
     RegisterBackup = "register_backup"
     UnregisterBackup = "unregister_backup"
+    DeleteBirthday = "delete_birthday"
 
 
 button_to_command = {
@@ -62,6 +64,9 @@ button_to_command = {
     #
     "🚫 Unregister Backup": TCommand.UnregisterBackup,
     "/unregister_backup": TCommand.UnregisterBackup,
+    #
+    "❌ Delete Birthday": TCommand.DeleteBirthday,
+    "/delete_birthday": TCommand.DeleteBirthday,
 }
 
 
@@ -74,6 +79,7 @@ def get_main_buttons():
         KeyboardButton("🎉 Register Birthday"),
         KeyboardButton("🔐 Register Backup"),
         KeyboardButton("🚫 Unregister Backup"),
+        KeyboardButton("❌ Delete Birthday"),
     ]
 
     markup.add(*buttons)
@@ -94,7 +100,7 @@ def handle_start(message):
 
     bot.send_message(
         message.chat.id,
-        "Hello! Send me a message and I'll repeat it once a minute for 5 minutes.\n"
+        "Hello! This bot in beta. Use commands to understand what they do.\n\n"
         "Also, you can use the buttons below for navigation.\n\n" + backup_ping_msg,
         reply_markup=get_main_buttons(),
     )
@@ -103,14 +109,14 @@ def handle_start(message):
 
 def send_backup(message):
     logging.info(f"Received /backup command from Chat ID {message.chat.id}")
-    all_messages = "\n".join(db.get_all_birthdays(message.chat.id))
+    all_birthdays = "\n".join(db.get_all_birthdays(message.chat.id))
 
     bot.send_message(
         message.chat.id,
-        f"Your messages:\n{all_messages if all_messages else 'No messages found.'}",
+        f"Your messages:\n{all_birthdays if all_birthdays else 'No messages found.'}",
         reply_markup=get_main_buttons(),
     )
-    logging.debug(f"Sent backup messages to Chat ID {message.chat.id}: {all_messages}")
+    logging.debug(f"Sent backup messages to Chat ID {message.chat.id}: {all_birthdays}")
 
 
 def process_birthday_pings():
@@ -123,16 +129,11 @@ def process_birthday_pings():
 
             for days in days_notice:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
-                logging.info(f"bebta {days}")
-                for chat_id, name, birthday_str in upcoming_birthdays:
-                    logging.info(f"bebta chat_id {chat_id}")
+                for id, chat_id, name, birthday_str in upcoming_birthdays:
                     birthday = datetime.strptime(birthday_str, "%Y-%m-%d")
                     current_year = datetime.now().year
                     birthday_this_year = birthday.replace(year=current_year)
-                    logging.info(f"bebta birthday_this_year {birthday_this_year}")
-                    logging.info(f"bebta datetime.now() {datetime.now()}")
 
-                    # get 00:00 of today:
                     today = datetime.now().replace(
                         hour=0, minute=0, second=0, microsecond=0
                     )
@@ -148,6 +149,8 @@ def process_birthday_pings():
                         logging.info(
                             f"Sent reminder to Chat ID {chat_id}: {reminder_text}"
                         )
+
+                        db.mark_birthday_reminder_sent(id, days)
         except Exception as e:
             logging.error(f"Error during birthday ping processing: {e}")
             utils.log_exception(e)
@@ -205,11 +208,11 @@ def process_backup_pings():
 
                 db.update_backup_ping(chat_id)
 
-                all_messages = "\n".join(db.get_all_birthdays(chat_id))
-                if all_messages:
+                all_birthdays = "\n".join(db.get_all_birthdays(chat_id))
+                if all_birthdays:
                     bot.send_message(
                         chat_id,
-                        f"Here's your latest backup:\n{all_messages}",
+                        f"Here's your latest backup:\n{all_birthdays}",
                     )
                     logging.info(f"Sent backup to Chat ID {chat_id}.")
                 else:
@@ -245,6 +248,32 @@ def unregister_backup(message):
     logging.info(f"Unregistered auto-backup for Chat ID {chat_id}.")
 
 
+def handle_deletion(message):
+    chat_id = message.chat.id
+    try:
+        birthday_id = int(message.text)
+        db.delete_birthday(birthday_id)
+        bot.send_message(
+            chat_id, "Birthday deleted successfully.", reply_markup=get_main_buttons()
+        )
+    except ValueError:
+        bot.send_message(
+            chat_id,
+            "Invalid ID. Please enter a numerical ID.",
+            reply_markup=get_main_buttons(),
+        )
+    except Exception as e:
+        logging.error(f"Error deleting birthday for Chat ID {chat_id}: {e}")
+        bot.send_message(
+            chat_id,
+            "An error occurred. Please try again.",
+            reply_markup=get_main_buttons(),
+        )
+        utils.log_exception(e)
+    finally:
+        user_states[chat_id] = TUserState.Default
+
+
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     chat_id = message.chat.id
@@ -268,6 +297,9 @@ def handle_message(message):
                 return
             case TCommand.UnregisterBackup:
                 unregister_backup(message)
+                return
+            case TCommand.DeleteBirthday:
+                delete_birthday(message)
                 return
             case _:
                 raise ValueError("Unknown command")
@@ -337,6 +369,25 @@ def handle_message(message):
                     reply_markup=get_main_buttons(),
                 )
                 utils.log_exception(e)
+        case TUserState.AwaitingDeletion:
+            try:
+                birthday_id = int(user_message)
+                db.delete_birthday(birthday_id)
+                bot.send_message(
+                    chat_id,
+                    f"Birthday deleted successfully. ID: {birthday_id}",
+                    reply_markup=get_main_buttons(),
+                )
+                logging.info(f"Deleted birthday for Chat ID {chat_id}.")
+                user_states[chat_id] = None
+            except ValueError:
+                bot.send_message(
+                    chat_id,
+                    "Invalid ID. Please enter a numerical ID.",
+                    reply_markup=get_main_buttons(),
+                )
+            except Exception as e:
+                logging.error(f"Error deleting birthday for Chat ID {chat_id}: {e}")
         case _:
             bot.send_message(
                 chat_id,
