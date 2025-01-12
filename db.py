@@ -88,30 +88,7 @@ def init_db() -> None:
         raise
 
 
-def save_message(chat_id: int, user_message: str) -> None:
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO messages (chat_id, user_message)
-            VALUES (?, ?)
-        """,
-            (chat_id, user_message),
-        )
-        conn.commit()
-        conn.close()
-        logging.info(
-            f"Message saved to database: [Chat ID: {chat_id}, Message: {user_message}]"
-        )
-    except sqlite3.Error as e:
-        logging.error(f"Error saving message to database: {e}")
-        utils.log_exception(e)
-        raise
-
-
-# TODO rename to get_all_birthdays
-def get_all_messages(chat_id: int) -> list[str]:
+def get_all_birthdays(chat_id: int) -> list[str]:
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
