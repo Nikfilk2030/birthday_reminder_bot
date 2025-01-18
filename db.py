@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import utils
 
-DB_FILE = "messages.db"
+DB_FILE = "data.db"
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -41,23 +41,29 @@ class TBackupPingSettings:
         )
 
 
+class TBirthday:
+    def __init__(self, select_result: tuple):
+        if select_result is None:
+            self.id = None
+            self.name = None
+            self.birthday = None
+            return
+
+        self.id = int(select_result[0])
+        self.name = select_result[2]
+        self.birthday = datetime.strptime(select_result[3], "%Y-%m-%d")
+
+    def __str__(self):
+        return f"ID: {self.id},\t{self.name},\t{self.birthday}"
+
+
 def init_db() -> None:
     logging.debug(f"Initializing database at '{DB_FILE}'...")
     try:
         conn = sqlite3.connect(DB_FILE)
         logging.info("Database connected successfully.")
         cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                chat_id INTEGER NOT NULL,
-                user_message TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """
-        )
+        cursor.execute("PRAGMA journal_mode=WAL;")
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS backup_ping_settings (
@@ -82,14 +88,12 @@ def init_db() -> None:
             );
         """
         )
-
         conn.commit()
         conn.close()
         logging.info("Database initialized successfully.")
     except sqlite3.Error as e:
         logging.error(f"Error initializing the database: {e}")
         utils.log_exception(e)
-        raise
 
 
 def get_all_birthdays(chat_id: int) -> list[str]:
@@ -102,14 +106,13 @@ def get_all_birthdays(chat_id: int) -> list[str]:
         """,
             (chat_id,),
         )
-        messages = cursor.fetchall()
+        birthdays = cursor.fetchall()
         conn.close()
-        logging.info(f"Retrieved messages for Chat ID {chat_id}: {messages}")
-        return [str(message) for message in messages]
+        logging.info(f"Retrieved birthdays for Chat ID {chat_id}: {birthdays}")
+        return [str(TBirthday(birthday)) for birthday in birthdays]
     except sqlite3.Error as e:
-        logging.error(f"Error retrieving messages from database: {e}")
+        logging.error(f"Error retrieving birthdays from database: {e}")
         utils.log_exception(e)
-        raise
 
 
 def get_all_chat_ids() -> list[int]:
@@ -118,7 +121,7 @@ def get_all_chat_ids() -> list[int]:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT DISTINCT chat_id FROM messages
+            SELECT DISTINCT chat_id FROM birthdays
         """
         )
         chat_ids = cursor.fetchall()
@@ -126,9 +129,8 @@ def get_all_chat_ids() -> list[int]:
         logging.info(f"Retrieved chat IDs: {chat_ids}")
         return chat_ids
     except sqlite3.Error as e:
-        logging.error(f"Error retrieving messages from database: {e}")
+        logging.error(f"Error retrieving chat_ids from database: {e}")
         utils.log_exception(e)
-        raise
 
 
 def register_backup_ping(chat_id: int, update_timedelta: int) -> None:
@@ -154,7 +156,6 @@ def register_backup_ping(chat_id: int, update_timedelta: int) -> None:
     except sqlite3.Error as e:
         logging.error(f"Error registering backup ping: {e}")
         utils.log_exception(e)
-        raise
 
 
 def update_backup_ping(chat_id: int) -> None:
@@ -175,7 +176,6 @@ def update_backup_ping(chat_id: int) -> None:
     except sqlite3.Error as e:
         logging.error(f"Error updating last backup sent: {e}")
         utils.log_exception(e)
-        raise
 
 
 def unregister_backup_ping(chat_id: int) -> None:
@@ -195,8 +195,7 @@ def unregister_backup_ping(chat_id: int) -> None:
         logging.info(f"Unregistered backup ping for Chat ID {chat_id}")
     except sqlite3.Error as e:
         logging.error(f"Error unregistering backup ping: {e}")
-        utils.log_exception(e)
-        raise
+        utils.log_fexception(e)
 
 
 def select_from_backup_ping(chat_id: int) -> TBackupPingSettings:
@@ -216,7 +215,6 @@ def select_from_backup_ping(chat_id: int) -> TBackupPingSettings:
     except sqlite3.Error as e:
         logging.error(f"Error retrieving last backup sent: {e}")
         utils.log_exception(e)
-        raise
 
 
 def register_birthday(chat_id: int, name: str, birthday: datetime) -> None:
@@ -241,7 +239,6 @@ def register_birthday(chat_id: int, name: str, birthday: datetime) -> None:
     except sqlite3.Error as e:
         logging.error(f"Error registering birthday: {e}")
         utils.log_exception(e)
-        raise
 
 
 def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
@@ -272,7 +269,6 @@ def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
     except sqlite3.Error as e:
         logging.error(f"Error retrieving upcoming birthdays: {e}")
         utils.log_exception(e)
-        raise
 
 
 def mark_birthday_reminder_sent(birthday_id: int, days_ago: int) -> None:
@@ -298,10 +294,9 @@ def mark_birthday_reminder_sent(birthday_id: int, days_ago: int) -> None:
     except sqlite3.Error as e:
         logging.error(f"Error marking reminder as sent: {e}")
         utils.log_exception(e)
-        raise
 
 
-def delete_birthday(birthday_id: int) -> None:
+def delete_birthday(chat_id: int, birthday_id: int) -> None:
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -309,15 +304,16 @@ def delete_birthday(birthday_id: int) -> None:
         cursor.execute(
             """
             DELETE FROM birthdays
-            WHERE id = ?
+            WHERE id = ? AND chat_id = ?
             """,
-            (birthday_id,),
+            (birthday_id, chat_id),
         )
 
         conn.commit()
         conn.close()
-        logging.info(f"Deleted Birthday ID {birthday_id}")
+        logging.info(f"Deleted Birthday ID {birthday_id} for Chat ID {chat_id}")
+
+        return cursor.rowcount
     except sqlite3.Error as e:
         logging.error(f"Error deleting birthday: {e}")
         utils.log_exception(e)
-        raise
