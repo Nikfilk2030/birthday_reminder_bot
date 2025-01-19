@@ -7,7 +7,8 @@ from datetime import datetime
 
 import telebot
 from dotenv import load_dotenv
-from telebot.types import KeyboardButton, ReplyKeyboardMarkup
+from telebot.types import (InlineKeyboardButton, InlineKeyboardMarkup,
+                           KeyboardButton, ReplyKeyboardMarkup)
 
 import db
 import utils
@@ -30,6 +31,8 @@ if not TOKEN:
 bot = telebot.TeleBot(TOKEN)
 
 user_states = {}
+
+REMINDED_DAYS = [0, 1, 3, 7]
 
 
 class TUserState(enum.Enum):
@@ -96,6 +99,29 @@ def get_main_buttons():
     return markup
 
 
+def get_all_birthdays(chat_id: int) -> str:
+    return "\n".join(db.get_all_birthdays(chat_id))
+
+
+def get_reminder_settings_keyboard(chat_id):
+    current_settings = db.get_reminder_settings(chat_id) or []
+
+    markup = InlineKeyboardMarkup()
+
+    reminder_buttons = [
+        InlineKeyboardButton(
+            f"{'✅' if days in current_settings else '❌'} {days} days",
+            callback_data=f"reminder_{days}",
+        )
+        for days in REMINDED_DAYS
+    ]
+
+    markup.row(reminder_buttons[0], reminder_buttons[1])
+    markup.row(reminder_buttons[2], reminder_buttons[3])
+
+    return markup
+
+
 def handle_start(message):
     logging.info(f"Received /start or /help command from Chat ID {message.chat.id}")
 
@@ -124,15 +150,46 @@ List of commands:
 {commands_msg}
 
 Bot can send you backup of all birthdays. You can register it by clicking on the button "🔐 Register Backup".
+
 {backup_ping_msg}
 """,
         reply_markup=get_main_buttons(),
     )
     logging.debug(f"Sent welcome message to Chat ID {message.chat.id}")
 
+    bot.send_message(
+        message.chat.id,
+        "Configure when you want to receive birthday reminders:",
+        reply_markup=get_reminder_settings_keyboard(message.chat.id),
+    )
 
-def get_all_birthdays(chat_id: int) -> str:
-    return "\n".join(db.get_all_birthdays(chat_id))
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("reminder_"))
+def handle_reminder_callback(call):
+    days = int(call.data.split("_")[1])
+    chat_id = call.message.chat.id
+
+    current_settings = db.get_reminder_settings(chat_id) or []
+
+    if days in current_settings:
+        current_settings.remove(days)
+    else:
+        current_settings.append(days)
+
+    db.update_reminder_settings(chat_id, current_settings)
+
+    # Update the message with new keyboard
+    bot.edit_message_reply_markup(
+        chat_id=chat_id,
+        message_id=call.message.message_id,
+        reply_markup=get_reminder_settings_keyboard(chat_id),
+    )
+
+    # Answer the callback to remove loading state
+    bot.answer_callback_query(
+        call.id,
+        f"{'Enabled' if days in current_settings else 'Disabled'} {days}-day reminders",
+    )
 
 
 def send_backup(message):
@@ -150,7 +207,6 @@ def send_backup(message):
 
 
 def process_birthday_pings():
-    days_notice = [0, 1, 3, 7]  # TODO Customize days for reminders
     while True:
         minutes = 1
         time.sleep(minutes * 60)
@@ -161,9 +217,14 @@ def process_birthday_pings():
         try:
             logging.info("Checking for upcoming birthdays...")
 
-            for days in days_notice:
+            for days in REMINDED_DAYS:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
+
                 for id, chat_id, name, birthday_str in upcoming_birthdays:
+                    user_settings = db.get_reminder_settings(chat_id)
+                    if not user_settings:
+                        continue
+
                     birthday = datetime.strptime(birthday_str, "%Y-%m-%d")
                     current_year = datetime.now().year
                     birthday_this_year = birthday.replace(year=current_year)
@@ -171,20 +232,25 @@ def process_birthday_pings():
                     today = datetime.now().replace(
                         hour=0, minute=0, second=0, microsecond=0
                     )
+                    days_until = (birthday_this_year - today).days
 
-                    if (birthday_this_year - today).days == days:
-                        logging.info("got into if")
-                        if days == 0:
+                    # Only send reminder if user has enabled this day.
+                    if days_until in user_settings:
+                        if days_until == 0:
+                            bot.send_message(chat_id, "🎂")
                             reminder_text = f"Today is {name}'s birthday! 🎂"
                         else:
-                            reminder_text = f"{name}'s birthday is in {days} days!"
+                            reminder_text = (
+                                f"{name}'s birthday is in {days_until} days!"
+                            )
 
                         bot.send_message(chat_id, reminder_text)
                         logging.info(
                             f"Sent reminder to Chat ID {chat_id}: {reminder_text}"
                         )
 
-                        db.mark_birthday_reminder_sent(id, days)
+                        db.mark_birthday_reminder_sent(id, days_until)
+
         except Exception as e:
             logging.error(f"Error during birthday ping processing: {e}")
             utils.log_exception(e)
@@ -411,7 +477,6 @@ def handle_message(message):
                     "Invalid name format. Please try again.",
                     reply_markup=get_main_buttons(),
                 )
-                utils.log_exception(e)
 
 
 if __name__ == "__main__":
