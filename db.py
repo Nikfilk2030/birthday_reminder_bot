@@ -64,6 +64,16 @@ def init_db() -> None:
         logging.info("Database connected successfully.")
         cursor = conn.cursor()
         cursor.execute("PRAGMA journal_mode=WAL;")
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_reminder_settings (
+                chat_id INTEGER PRIMARY KEY,
+                reminder_days TEXT DEFAULT "0,1,3,7",
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """
+        )
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS backup_ping_settings (
@@ -96,6 +106,40 @@ def init_db() -> None:
         utils.log_exception(e)
 
 
+def get_reminder_settings(chat_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT reminder_days FROM user_reminder_settings WHERE chat_id = ?", (chat_id,)
+    )
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result and result[0]:
+        return [int(x) for x in result[0].split(",")]
+    return []
+
+
+def update_reminder_settings(chat_id, days):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    days_str = ",".join(map(str, sorted(days)))
+
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO user_reminder_settings (chat_id, reminder_days)
+        VALUES (?, ?)
+    """,
+        (chat_id, days_str),
+    )
+
+    conn.commit()
+    conn.close()
+
+
 def get_all_birthdays(chat_id: int) -> list[str]:
     try:
         conn = sqlite3.connect(DB_FILE)
@@ -121,7 +165,7 @@ def get_all_chat_ids() -> list[int]:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT DISTINCT chat_id FROM birthdays
+            SELECT DISTINCT chat_id FROM user_reminder_settings
         """
         )
         chat_ids = cursor.fetchall()
@@ -248,7 +292,7 @@ def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
 
         today = datetime.now()
         future_date = today + timedelta(days=days_ahead)
-        start_date_str = today.strftime("%m-%d")
+        start_date_str = future_date.strftime("%m-%d")
         end_date_str = future_date.strftime("%m-%d")
 
         reminder_field = f"was_reminded_{days_ahead}_days_ago"
