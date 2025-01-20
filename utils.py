@@ -67,9 +67,10 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
 
 
 # TODO сюда можно припилить логику "если год не указан, мы не скажем возраст"
-def parse_date(date_str: str) -> tuple[bool, datetime | None]:
+def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
     current_year = datetime.now().year
     date_parts = date_str.split()
+    has_year = False
 
     try:
         if len(date_parts) == 1:  # day.month or day.month.year
@@ -81,21 +82,23 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None]:
             elif len(date_part) == 3:
                 # Format: day.month.year
                 day, month, year = map(int, date_part)
+                has_year = True
             else:
-                return False, None
+                return False, None, False
         elif len(date_parts) == 2:
             # Format: day.month age
             date_part, age_str = date_parts
             day, month = map(int, date_part.split("."))
             birth_year = current_year - int(age_str)
             year = birth_year
+            has_year = True
         else:
-            return False, None
+            return False, None, False
 
         parsed_date = datetime(year, month, day)
-        return True, parsed_date
+        return True, parsed_date, has_year
     except ValueError:
-        return False, None
+        return False, None, False
 
 
 def log_exception(exc: Exception):

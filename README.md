@@ -9,3 +9,5 @@ I am a programmer, if there is no ready-made reliable solution, I have to write 
 ## TODO
 
 - Make auto deleting logs
+- Make backup pring sorted by today date
+- Make Years old count
