@@ -160,13 +160,24 @@ def get_all_birthdays(chat_id: int) -> list[str]:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT * FROM birthdays WHERE chat_id = ?
-        """,
+            WITH ordered_birthdays AS (
+                SELECT *,
+                    CASE
+                        WHEN strftime('%m-%d', birthday) >= strftime('%m-%d', 'now')
+                        THEN 0  -- This year
+                        ELSE 1  -- Next year
+                    END as year_offset,
+                    strftime('%m-%d', birthday) as date_without_year
+                FROM birthdays
+                WHERE chat_id = ?
+            )
+            SELECT * FROM ordered_birthdays
+            ORDER BY year_offset, date_without_year
+            """,
             (chat_id,),
         )
         birthdays = cursor.fetchall()
         conn.close()
-        logging.info(f"Retrieved birthdays for Chat ID {chat_id}: {birthdays}")
         return [str(TBirthday(birthday)) for birthday in birthdays]
     except sqlite3.Error as e:
         logging.error(f"Error retrieving birthdays from database: {e}")

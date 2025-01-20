@@ -1,6 +1,7 @@
 import logging
+import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Union
 
 TDuration = int
@@ -10,6 +11,13 @@ TIME_MAP = {
     "minutes": 1,
     "min": 1,
     "m": 1,
+    "минута": 1,
+    "минуты": 1,
+    "минут": 1,
+    "минуты": 1,
+    "минут": 1,
+    "минуты": 1,
+    "минут": 1,
     "час": 60,
     "часы": 60,
     "часов": 60,
@@ -30,6 +38,7 @@ TIME_MAP = {
     "год": 525600,
     "года": 525600,
     "годов": 525600,
+    "годы": 525600,
     "year": 525600,
     "years": 525600,
     "y": 525600,
@@ -66,7 +75,6 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
     return None
 
 
-# TODO сюда можно припилить логику "если год не указан, мы не скажем возраст"
 def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
     current_year = datetime.now().year
     date_parts = date_str.split()
@@ -82,6 +90,12 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
             elif len(date_part) == 3:
                 # Format: day.month.year
                 day, month, year = map(int, date_part)
+                # Check if year is 2 digits
+                if year < 100:
+                    return False, None, False
+                # Check if date is too far in the past (more than 100 years)
+                if current_year - year > 100:
+                    return False, None, False
                 has_year = True
             else:
                 return False, None, False
@@ -90,6 +104,9 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
             date_part, age_str = date_parts
             day, month = map(int, date_part.split("."))
             birth_year = current_year - int(age_str)
+            # Check if date is too far in the past (more than 100 years)
+            if current_year - birth_year > 100:
+                return False, None, False
             year = birth_year
             has_year = True
         else:
@@ -112,3 +129,17 @@ def log_exception(exc: Exception):
 def is_daytime():
     now = datetime.now()
     return now.hour >= 7 and now.hour <= 20
+
+
+def cleanup_old_logs(log_dir=".", max_days=30):
+    now = datetime.now()
+    for filename in os.listdir(log_dir):
+        if filename.startswith("bot.log."):
+            filepath = os.path.join(log_dir, filename)
+            file_modified = datetime.fromtimestamp(os.path.getmtime(filepath))
+            if now - file_modified > timedelta(days=max_days):
+                try:
+                    os.remove(filepath)
+                    logging.info(f"Deleted old log file: {filename}")
+                except Exception as e:
+                    logging.error(f"Failed to delete old log file {filename}: {e}")
