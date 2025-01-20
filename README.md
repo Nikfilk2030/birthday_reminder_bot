@@ -9,6 +9,8 @@
 
 Never miss a birthday again! Birthday Reminder Bot is a Telegram bot that helps you keep track of birthdays and sends timely reminders. Born out of a personal need after missing a best friend's birthday, this bot ensures you'll always remember important dates.
 
+**Try now: [@pchelka_zh_birthday_reminder_bot](https://t.me/pchelka_zh_birthday_reminder_bot)**
+
 ## 🌟 Features
 
 - 📝 Store birthdays with or without birth years
