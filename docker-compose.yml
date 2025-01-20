@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegram_bot
+    volumes:
+      - ./data.db:/app/data.db
+      - ./backup_ping_settings.db:/app/backup_ping_settings.db
+    env_file:
+      - .env
+    restart: always
