@@ -74,7 +74,7 @@ button_to_command = {
 
 description_to_command = {
     "🚀 Start": "Start the bot and see available commands.",
-    "🎉 Register Birthday": "Register a new birthday.",
+    "🎉 Register Birthday": "Register a new birthday. *Lifehack: you don't need to click this button, just send a message in the format: 'Name\nDate of birth'*",
     "❌ Delete Birthday": "Delete a birthday.",
     "💾 Backup": "Get a list of all your birthdays.",
     "🔐 Register Backup": "Register a new backup interval.",
@@ -143,24 +143,39 @@ def handle_start(message):
     bot.send_message(
         message.chat.id,
         f"""
-Hello! This bot in beta. Use commands to understand what they do.
-Also, you can use the buttons below for navigation.
+🎉 *Welcome to Birthday Reminder Bot!* 🎂
 
-List of commands:
+Never forget a birthday again! This bot helps you keep track of birthdays and sends you timely reminders.
+
+*What can this bot do?*
+• Store birthdays of your friends and family
+• Send reminders before upcoming birthdays
+• Create regular backups of your birthday list
+• Customize when you want to receive reminders
+
+*How to use:*
+1. Click "🎉 Register Birthday" to add a new birthday
+2. Set up reminder preferences below
+3. Optionally, set up automatic backups
+
+*Available Commands:*
 {commands_msg}
 
-Bot can send you backup of all birthdays. You can register it by clicking on the button "🔐 Register Backup".
-
 {backup_ping_msg}
+*Contribute to the project:*
+[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)
 """,
         reply_markup=get_main_buttons(),
+        parse_mode="Markdown",
     )
     logging.debug(f"Sent welcome message to Chat ID {message.chat.id}")
 
     bot.send_message(
         message.chat.id,
-        "Configure when you want to receive birthday reminders:",
+        "Configure when you want to receive birthday reminders:\n\n"
+        "*Example: '1 days' means you'll receive a reminder 1 day before the birthday.*",
         reply_markup=get_reminder_settings_keyboard(message.chat.id),
+        parse_mode="Markdown",
     )
 
 
@@ -208,15 +223,13 @@ def send_backup(message):
 
 def process_birthday_pings():
     while True:
-        minutes = 1
+        minutes = 5
         time.sleep(minutes * 60)
 
         if not utils.is_daytime():
             continue
 
         try:
-            logging.info("Checking for upcoming birthdays...")
-
             for days in REMINDED_DAYS:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
 
@@ -243,10 +256,12 @@ def process_birthday_pings():
 
                         if days_until == 0:
                             bot.send_message(chat_id, "🎂")
-                            reminder_text = f"Today is {name}'s birthday!{age_text} 🎂"
+                            reminder_text = (
+                                f"📆🎂Today is {name}'s birthday!{age_text} 🎂"
+                            )
                         else:
                             reminder_text = (
-                                f"{name}'s birthday is in {days_until} days!{age_text}"
+                                f"📆In {days_until} days {name}'s birthday!{age_text}"
                             )
 
                         bot.send_message(chat_id, reminder_text)
@@ -272,9 +287,11 @@ def register_birthday(message):
             "Second line: Date of birth\n"
             "\n"
             "*Possible formats:*\n"
-            "- day.month.year  (5.06.2001)\n"
+            "- day.month.year  (5.06.2001) - use full 4-digit year\n"
             "- day.month (5.06)\n"
             "- day.month age (5.06 19)\n"
+            "\n"
+            "*Note:* Dates must be within the last 100 years and years must be written in full 4-digit format (e.g., 1994 not 94)\n"
             "\n"
             "*Example:*\n"
             "John Doe\n"
@@ -286,16 +303,17 @@ def register_birthday(message):
     )
 
     user_states[chat_id] = TUserState.Default
-    logging.info(f"Awaiting name input for Chat ID {chat_id}.")
 
 
 def process_backup_pings():
     while True:
-        minutes = 1
+        minutes = 5
         time.sleep(minutes * 60)
         try:
             all_chat_ids = db.get_all_chat_ids()
-            logging.debug(f"Processing backup pings for Chat IDs: {all_chat_ids}")
+            if all_chat_ids is None:
+                logging.error("Failed to retrieve chat IDs")
+                continue
 
             for chat_id in all_chat_ids:
                 chat_id = chat_id[0]
@@ -320,14 +338,13 @@ def process_backup_pings():
                         chat_id,
                         f"Here's your latest backup:\n{all_birthdays}",
                     )
-                    logging.info(f"Sent backup to Chat ID {chat_id}.")
                 else:
                     bot.send_message(chat_id, "You have no saved birthdays.")
-                    logging.info(f"No birthdays found for Chat ID {chat_id}.")
 
         except Exception as e:
             logging.error(f"Error during backup ping processing: {e}")
             utils.log_exception(e)
+            time.sleep(60)
 
 
 def register_backup(message):
@@ -340,7 +357,6 @@ def register_backup(message):
     )
 
     user_states[chat_id] = TUserState.AwaitingInterval
-    logging.info(f"Awaiting interval input for Chat ID {chat_id}.")
 
 
 def unregister_backup(message):
@@ -468,9 +484,18 @@ def handle_message(message):
 
                 db.register_birthday(chat_id, name, parsed_date, has_year)
 
+                formatted_date = parsed_date.strftime(
+                    "%d %B %Y" if has_year else "%d %B"
+                )
+                age_text = ""
+                if has_year:
+                    current_year = datetime.now().year
+                    age = current_year - parsed_date.year
+                    age_text = f" (Age: {age})"
+
                 bot.send_message(
                     chat_id,
-                    f"Birthday registered! Name: {name}, Date: {parsed_date}",
+                    f"Birthday registered!\nName: {name}\nDate: {formatted_date}{age_text}",
                     reply_markup=get_main_buttons(),
                 )
                 logging.info(f"Registered birthday for Chat ID {chat_id}.")
@@ -486,6 +511,18 @@ def handle_message(message):
                 )
 
 
+def log_cleaner():
+    """Thread function to periodically clean up old log files."""
+    while True:
+        try:
+            utils.cleanup_old_logs()
+            time.sleep(24 * 60 * 60)
+        except Exception as e:
+            logging.error(f"Error in log cleaner thread: {e}")
+            utils.log_exception(e)
+            time.sleep(60 * 60)
+
+
 if __name__ == "__main__":
     db.init_db()
 
@@ -499,6 +536,10 @@ if __name__ == "__main__":
         birthday_thread = threading.Thread(target=process_birthday_pings, daemon=True)
         birthday_thread.start()
 
+        logging.info("Starting log cleaner thread...")
+        log_cleaner_thread = threading.Thread(target=log_cleaner, daemon=True)
+        log_cleaner_thread.start()
+
         bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
 
     except KeyboardInterrupt:
@@ -506,6 +547,7 @@ if __name__ == "__main__":
 
         backup_thread.join(timeout=2)
         birthday_thread.join(timeout=2)
+        log_cleaner_thread.join(timeout=2)
 
     except Exception as e:
         logging.critical(f"Bot polling encountered an error: {e}")
