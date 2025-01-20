@@ -91,6 +91,7 @@ def init_db() -> None:
                 chat_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 birthday DATE NOT NULL,
+                has_year BOOLEAN DEFAULT FALSE,
                 was_reminded_0_days_ago BOOLEAN DEFAULT FALSE,
                 was_reminded_1_days_ago BOOLEAN DEFAULT FALSE,
                 was_reminded_3_days_ago BOOLEAN DEFAULT FALSE,
@@ -261,7 +262,9 @@ def select_from_backup_ping(chat_id: int) -> TBackupPingSettings:
         utils.log_exception(e)
 
 
-def register_birthday(chat_id: int, name: str, birthday: datetime) -> None:
+def register_birthday(
+    chat_id: int, name: str, birthday: datetime, has_year: bool
+) -> None:
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -270,15 +273,15 @@ def register_birthday(chat_id: int, name: str, birthday: datetime) -> None:
 
         cursor.execute(
             """
-            INSERT INTO birthdays (chat_id, name, birthday)
-            VALUES (?, ?, ?)
+            INSERT INTO birthdays (chat_id, name, birthday, has_year)
+            VALUES (?, ?, ?, ?)
             """,
-            (chat_id, name, birthday_str),
+            (chat_id, name, birthday_str, has_year),
         )
         conn.commit()
         conn.close()
         logging.info(
-            f"Birthday registered: [Chat ID: {chat_id}, Name: {name}, Birthday: {birthday_str}]"
+            f"Birthday registered: [Chat ID: {chat_id}, Name: {name}, Birthday: {birthday_str}, Has Year: {has_year}]"
         )
     except sqlite3.Error as e:
         logging.error(f"Error registering birthday: {e}")
@@ -298,7 +301,7 @@ def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
         reminder_field = f"was_reminded_{days_ahead}_days_ago"
 
         query = f"""
-            SELECT id, chat_id, name, birthday FROM birthdays
+            SELECT id, chat_id, name, birthday, has_year FROM birthdays
             WHERE strftime('%m-%d', birthday) BETWEEN ? AND ?
             AND {reminder_field} = FALSE
         """

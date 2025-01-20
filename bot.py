@@ -220,7 +220,7 @@ def process_birthday_pings():
             for days in REMINDED_DAYS:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
 
-                for id, chat_id, name, birthday_str in upcoming_birthdays:
+                for id, chat_id, name, birthday_str, has_year in upcoming_birthdays:
                     user_settings = db.get_reminder_settings(chat_id)
                     if not user_settings:
                         continue
@@ -236,12 +236,17 @@ def process_birthday_pings():
 
                     # Only send reminder if user has enabled this day.
                     if days_until in user_settings:
+                        age_text = ""
+                        if has_year:
+                            age = current_year - birthday.year
+                            age_text = f" (turns {age})"
+
                         if days_until == 0:
                             bot.send_message(chat_id, "🎂")
-                            reminder_text = f"Today is {name}'s birthday! 🎂"
+                            reminder_text = f"Today is {name}'s birthday!{age_text} 🎂"
                         else:
                             reminder_text = (
-                                f"{name}'s birthday is in {days_until} days!"
+                                f"{name}'s birthday is in {days_until} days!{age_text}"
                             )
 
                         bot.send_message(chat_id, reminder_text)
@@ -396,7 +401,7 @@ def handle_message(message):
         case TUserState.AwaitingInterval:
             try:
                 if not utils.is_timestamp_valid(user_message):
-                    raise ValueError("Invalid format")
+                    raise ValueError(f"Invalid format, user_message: {user_message}")
 
                 interval_in_minutes = utils.get_time(user_message)
 
@@ -449,17 +454,19 @@ def handle_message(message):
                 splitted_message = user_message.split("\n")
 
                 if len(splitted_message) != 2:
-                    raise ValueError("Invalid format")
+                    raise ValueError(
+                        f"Invalid format, splitted message: {splitted_message}"
+                    )
 
                 name = splitted_message[0]
                 date = splitted_message[1]
 
-                success, parsed_date = utils.parse_date(date)
+                success, parsed_date, has_year = utils.parse_date(date)
 
                 if not success:
                     raise ValueError("Invalid date format")
 
-                db.register_birthday(chat_id, name, parsed_date)
+                db.register_birthday(chat_id, name, parsed_date, has_year)
 
                 bot.send_message(
                     chat_id,
