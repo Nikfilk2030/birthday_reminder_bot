@@ -47,14 +47,27 @@ class TBirthday:
             self.id = None
             self.name = None
             self.birthday = None
+            self.has_year = False
             return
 
         self.id = int(select_result[0])
         self.name = select_result[2]
         self.birthday = datetime.strptime(select_result[3], "%Y-%m-%d")
+        self.has_year = bool(select_result[4])
 
     def __str__(self):
-        return f"ID: {self.id},\t{self.name},\t{self.birthday}"
+        birthday_format = "%d %B %Y" if self.has_year else "%d %B"
+        birthday_str = self.birthday.strftime(birthday_format)
+
+        age_text = ""
+        if self.has_year:
+            current_year = datetime.now().year
+            age = current_year - self.birthday.year
+            if datetime.now().replace(year=self.birthday.year) < self.birthday:
+                age -= 1
+            age_text = f" ({age} years)"
+
+        return f"ID: {self.id},\t{self.name},\t{birthday_str}{age_text}"
 
 
 def init_db() -> None:
