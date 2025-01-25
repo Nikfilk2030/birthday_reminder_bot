@@ -42,7 +42,9 @@ class TBackupPingSettings:
 
 
 class TBirthday:
-    def __init__(self, select_result: tuple):
+    def __init__(self, select_result: tuple, need_id: bool = False):
+        self.need_id = need_id
+
         if select_result is None:
             self.id = None
             self.name = None
@@ -65,9 +67,11 @@ class TBirthday:
             age = current_year - self.birthday.year
             if datetime.now().replace(year=self.birthday.year) < self.birthday:
                 age -= 1
-            age_text = f" (Current age: {age} years), "
+            age_text = f", _(Current age: {age} years)_"
 
-        return f"{birthday_str}, {self.name},{age_text} ID: {self.id}"
+        id_text = f", ID: {self.id}" if self.need_id else ""
+
+        return f"{birthday_str}, {self.name}{age_text}{id_text}"
 
 
 def init_db() -> None:
@@ -154,7 +158,7 @@ def update_reminder_settings(chat_id, days):
     conn.close()
 
 
-def get_all_birthdays(chat_id: int) -> list[str]:
+def get_all_birthdays(chat_id: int, need_id: bool = False) -> list[str]:
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -178,7 +182,7 @@ def get_all_birthdays(chat_id: int) -> list[str]:
         )
         birthdays = cursor.fetchall()
         conn.close()
-        return [str(TBirthday(birthday)) for birthday in birthdays]
+        return [str(TBirthday(birthday, need_id)) for birthday in birthdays]
     except sqlite3.Error as e:
         logging.error(f"Error retrieving birthdays from database: {e}")
         utils.log_exception(e)
