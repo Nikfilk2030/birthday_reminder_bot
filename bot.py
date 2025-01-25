@@ -208,7 +208,6 @@ def handle_reminder_callback(call):
 
 
 def send_backup(message):
-    logging.info(f"Received /backup command from Chat ID {message.chat.id}")
     all_birthdays = get_all_birthdays(message.chat.id)
 
     bot.send_message(
@@ -216,9 +215,7 @@ def send_backup(message):
         f"Your birthdays:\n{all_birthdays if all_birthdays else 'No birthdays found.'}",
         reply_markup=get_main_buttons(),
     )
-    logging.debug(
-        f"Sent backup birthdays to Chat ID {message.chat.id}: {all_birthdays}"
-    )
+    logging.debug(f"Sent backup birthdays to Chat ID {message.chat.id}")
 
 
 def process_birthday_pings():
@@ -491,7 +488,7 @@ def handle_message(message):
                 if has_year:
                     current_year = datetime.now().year
                     age = current_year - parsed_date.year
-                    age_text = f" (Age: {age})"
+                    age_text = f" (Incoming age: {age})"
 
                 bot.send_message(
                     chat_id,

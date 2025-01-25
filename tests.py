@@ -17,7 +17,7 @@ class TestTimestampParser(unittest.TestCase):
         self.assertFalse(is_timestamp_valid("20 lightyears"))
         self.assertFalse(is_timestamp_valid("abc xyz"))
         self.assertFalse(is_timestamp_valid(""))
-        self.assertFalse(is_timestamp_valid("100 123"))
+        self.assertFalse(is_timestamp_valid("200 123"))
 
     def test_get_time(self):
         self.assertEqual(get_time("1 minute"), 1)
@@ -30,7 +30,7 @@ class TestTimestampParser(unittest.TestCase):
         self.assertIsNone(get_time("20 lightyears"))
         self.assertIsNone(get_time("abc xyz"))
         self.assertIsNone(get_time(""))
-        self.assertIsNone(get_time("100 123"))
+        self.assertIsNone(get_time("200 123"))
 
 
 class TestParseDate(unittest.TestCase):
@@ -54,11 +54,9 @@ class TestParseDate(unittest.TestCase):
     def test_valid_dates_with_age(self):
         current_year = datetime.now().year
         self.assertEqual(
-            parse_date("5.06 19"), (True, datetime(current_year - 19, 6, 5), True)
+            parse_date("5.06 19"), (True, datetime(current_year - 20, 6, 5), True)
         )
-        self.assertEqual(
-            parse_date("15.08 0"), (True, datetime(current_year, 8, 15), True)
-        )
+        self.assertEqual(parse_date("15.08 0"), (False, None, False))
 
     def test_invalid_dates(self):
         self.assertEqual(parse_date("32.12.2001"), (False, None, False))  # Invalid day
@@ -74,11 +72,11 @@ class TestParseDate(unittest.TestCase):
         # Test two-digit year format
         self.assertEqual(parse_date("01.01.94"), (False, None, False))
 
-        # Test dates more than 100 years ago
-        self.assertEqual(parse_date("01.01.1900"), (False, None, False))
+        # Test dates more than 200 years ago
+        self.assertEqual(parse_date("01.01.1800"), (False, None, False))
         current_year = datetime.now().year
         self.assertEqual(
-            parse_date(f"01.01 {current_year - 150}"), (False, None, False)
+            parse_date(f"01.01 {current_year - 250}"), (False, None, False)
         )
 
     def test_invalid_formats(self):

@@ -103,7 +103,10 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
             # Format: day.month age
             date_part, age_str = date_parts
             day, month = map(int, date_part.split("."))
-            birth_year = current_year - int(age_str) - 1
+            age = int(age_str)
+            if age <= 0:
+                return False, None, False
+            birth_year = current_year - age - 1
             # Check if date is too far in the past (more than 200 years)
             if current_year - birth_year > 200:
                 return False, None, False
