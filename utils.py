@@ -125,6 +125,23 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
         return False, None, False
 
 
+def parse_dates(message: str) -> tuple[bool, list[tuple[str, datetime, bool]]]:
+    lines = message.strip().split("\n")
+    if len(lines) % 2 != 0:
+        return False, []
+
+    parsed_birthdays = []
+    for i in range(0, len(lines), 2):
+        name = lines[i].strip()
+        date_str = lines[i + 1].strip()
+        success, parsed_date, has_year = parse_date(date_str)
+        if not success:
+            return False, []
+        parsed_birthdays.append((name, parsed_date, has_year))
+
+    return True, parsed_birthdays
+
+
 def log_exception(exc: Exception):
     """
     Helper function to log exception details with full traceback.

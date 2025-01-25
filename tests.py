@@ -214,5 +214,35 @@ class TestBackupPingSettings(unittest.TestCase):
         self.assertEqual(settings.update_timedelta, 60)
 
 
+class TestMultipleBirthdayRegistration(unittest.TestCase):
+    def setUp(self):
+        self.test_chat_id = 123456789
+        db.DB_FILE = "test_data.db"
+        db.init_db()
+
+    def tearDown(self):
+        if os.path.exists(db.DB_FILE):
+            os.remove(db.DB_FILE)
+
+    def test_multiple_birthday_registration(self):
+        message = "John Doe\n15.05.1990\nJane Smith\n20.06.1985"
+        success, parsed_birthdays = utils.parse_dates(message)
+        self.assertTrue(success)
+        self.assertEqual(len(parsed_birthdays), 2)
+
+        for name, date, has_year in parsed_birthdays:
+            db.register_birthday(self.test_chat_id, name, date, has_year)
+
+        birthdays = db.get_all_birthdays(self.test_chat_id)
+        self.assertEqual(len(birthdays), 2)
+        self.assertIn("John Doe", birthdays[0])
+        self.assertIn("Jane Smith", birthdays[1])
+
+    def test_invalid_multiple_birthday_registration(self):
+        message = "John Doe\n15.05.1990\nInvalid Date\n32.13.2000"
+        success, _ = utils.parse_dates(message)
+        self.assertFalse(success)
+
+
 if __name__ == "__main__":
     unittest.main()

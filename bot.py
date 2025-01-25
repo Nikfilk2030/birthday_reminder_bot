@@ -502,39 +502,36 @@ def handle_message(message):
                 ):
                     return
 
-                splitted_message = user_message.split("\n")
+                chat_id = message.chat.id
+                user_message = message.text.strip()
 
-                if len(splitted_message) != 2:
-                    raise ValueError(
-                        f"Invalid format, splitted message: {splitted_message}"
-                    )
-
-                name = splitted_message[0]
-                date = splitted_message[1]
-
-                success, parsed_date, has_year = utils.parse_date(date)
-
+                success, parsed_birthdays = utils.parse_dates(user_message)
                 if not success:
-                    raise ValueError("Invalid date format")
+                    bot.send_message(
+                        chat_id,
+                        "Invalid format. Please ensure each name is followed by a date on a new line.",
+                        reply_markup=get_main_buttons(),
+                        parse_mode="Markdown",
+                    )
+                    return
 
-                db.register_birthday(chat_id, name, parsed_date, has_year)
+                for name, parsed_date, has_year in parsed_birthdays:
+                    db.register_birthday(chat_id, name, parsed_date, has_year)
 
-                formatted_date = parsed_date.strftime(
-                    "%d %B %Y" if has_year else "%d %B"
+                birthdays_msg = "\n".join(
+                    [
+                        f"- {name}: {parsed_date.strftime('%d %B %Y')}"
+                        for name, parsed_date, has_year in parsed_birthdays
+                    ]
                 )
-                age_text = ""
-                if has_year:
-                    current_year = datetime.now().year
-                    age = current_year - parsed_date.year
-                    age_text = f" (Incoming age: {age})"
 
                 bot.send_message(
                     chat_id,
-                    f"Birthday registered!\nName: {name}\nDate: {formatted_date}{age_text}",
+                    f"Birthdays registered successfully!\n{birthdays_msg}",
                     reply_markup=get_main_buttons(),
                     parse_mode="Markdown",
                 )
-                logging.info(f"Registered birthday for Chat ID {chat_id}.")
+                logging.info(f"Registered multiple birthdays for Chat ID {chat_id}.")
 
                 user_states[chat_id] = None
 
