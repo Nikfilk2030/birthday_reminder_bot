@@ -99,8 +99,8 @@ def get_main_buttons():
     return markup
 
 
-def get_all_birthdays(chat_id: int) -> str:
-    return "\n".join(db.get_all_birthdays(chat_id))
+def get_all_birthdays(chat_id: int, need_id: bool = False) -> str:
+    return "\n".join(db.get_all_birthdays(chat_id, need_id))
 
 
 def get_reminder_settings_keyboard(chat_id):
@@ -193,27 +193,53 @@ def handle_reminder_callback(call):
 
     db.update_reminder_settings(chat_id, current_settings)
 
-    # Update the message with new keyboard
     bot.edit_message_reply_markup(
         chat_id=chat_id,
         message_id=call.message.message_id,
         reply_markup=get_reminder_settings_keyboard(chat_id),
     )
 
-    # Answer the callback to remove loading state
     bot.answer_callback_query(
         call.id,
         f"{'Enabled' if days in current_settings else 'Disabled'} {days}-day reminders",
     )
 
 
+def get_all_birthdays_formatted(chat_id: int, need_id: bool = False) -> str:
+    all_birthdays = get_all_birthdays(chat_id, need_id)
+
+    if not all_birthdays:
+        return "You have no saved birthdays."
+
+    birthdays_by_month = {}
+    for line in all_birthdays.split("\n"):
+        date_str, name, *rest = line.split(", ")
+        date = datetime.strptime(
+            date_str, "%d %B %Y" if "Current age" in line else "%d %B"
+        )
+        month = date.strftime("%B")
+        if month not in birthdays_by_month:
+            birthdays_by_month[month] = []
+        birthdays_by_month[month].append(line)
+
+    markdown_message = "*Your Birthdays:*\n\n"
+    for month, birthdays in birthdays_by_month.items():
+        markdown_message += f"*{month}*\n"
+        for birthday in birthdays:
+            markdown_message += f"- {birthday}\n"
+        markdown_message += "\n"
+
+    return markdown_message
+
+
 def send_backup(message):
-    all_birthdays = get_all_birthdays(message.chat.id)
+    all_birthdays = get_all_birthdays_formatted(message.chat.id)
 
     bot.send_message(
         message.chat.id,
-        f"Your birthdays:\n{all_birthdays if all_birthdays else 'No birthdays found.'}",
+        all_birthdays,
         reply_markup=get_main_buttons(),
+        parse_mode="Markdown",
     )
     logging.debug(f"Sent backup birthdays to Chat ID {message.chat.id}")
 
@@ -329,14 +355,12 @@ def process_backup_pings():
 
                 db.update_backup_ping(chat_id)
 
-                all_birthdays = get_all_birthdays(chat_id)
-                if all_birthdays:
-                    bot.send_message(
-                        chat_id,
-                        f"Here's your latest backup:\n{all_birthdays}",
-                    )
-                else:
-                    bot.send_message(chat_id, "You have no saved birthdays.")
+                all_birthdays = get_all_birthdays_formatted(chat_id)
+                bot.send_message(
+                    chat_id,
+                    f"Here's your latest backup:\n{all_birthdays}",
+                    parse_mode="Markdown",
+                )
 
         except Exception as e:
             logging.error(f"Error during backup ping processing: {e}")
@@ -351,6 +375,7 @@ def register_backup(message):
         chat_id,
         "Please enter the interval at which to send backup (1 month, 1year, 1год, etc).",
         reply_markup=get_main_buttons(),
+        parse_mode="Markdown",
     )
 
     user_states[chat_id] = TUserState.AwaitingInterval
@@ -363,6 +388,7 @@ def unregister_backup(message):
         chat_id,
         "Auto-backup unregistered.",
         reply_markup=get_main_buttons(),
+        parse_mode="Markdown",
     )
     logging.info(f"Unregistered auto-backup for Chat ID {chat_id}.")
 
@@ -370,13 +396,14 @@ def unregister_backup(message):
 def handle_deletion(message):
     chat_id = message.chat.id
     user_states[chat_id] = TUserState.AwaitingDeletion
-    all_birthdays = get_all_birthdays(message.chat.id)
+    all_birthdays = get_all_birthdays_formatted(message.chat.id, need_id=True)
 
     bot.send_message(
         chat_id,
         "Enter the ID of the birthday you want to delete:"
         f"\n\n{all_birthdays if all_birthdays else 'No birthdays found.'}",
         reply_markup=get_main_buttons(),
+        parse_mode="Markdown",
     )
 
 
@@ -424,6 +451,7 @@ def handle_message(message):
                     chat_id,
                     f"Auto-backup registered! You'll receive backups every {interval_in_minutes} minute(s).",
                     reply_markup=get_main_buttons(),
+                    parse_mode="Markdown",
                 )
                 logging.info(
                     f"Registered auto-backup for Chat ID {chat_id} with interval {interval_in_minutes} minute(s)."
@@ -439,6 +467,7 @@ def handle_message(message):
                     chat_id,
                     "Invalid interval format. Please try again using a format like '1 month'.",
                     reply_markup=get_main_buttons(),
+                    parse_mode="Markdown",
                 )
                 utils.log_exception(e)
         case TUserState.AwaitingDeletion:
@@ -451,6 +480,7 @@ def handle_message(message):
                     chat_id,
                     f"Birthday deleted successfully. ID: {birthday_id}",
                     reply_markup=get_main_buttons(),
+                    parse_mode="Markdown",
                 )
                 logging.info(f"Deleted birthday for Chat ID {chat_id}.")
                 user_states[chat_id] = None
@@ -459,6 +489,7 @@ def handle_message(message):
                     chat_id,
                     "Invalid ID. Please enter a numerical ID or check the list of birthdays.",
                     reply_markup=get_main_buttons(),
+                    parse_mode="Markdown",
                 )
             except Exception as e:
                 logging.error(f"Error deleting birthday for Chat ID {chat_id}: {e}")
@@ -494,6 +525,7 @@ def handle_message(message):
                     chat_id,
                     f"Birthday registered!\nName: {name}\nDate: {formatted_date}{age_text}",
                     reply_markup=get_main_buttons(),
+                    parse_mode="Markdown",
                 )
                 logging.info(f"Registered birthday for Chat ID {chat_id}.")
 
@@ -505,6 +537,7 @@ def handle_message(message):
                     chat_id,
                     "Invalid name format. Please try again.",
                     reply_markup=get_main_buttons(),
+                    parse_mode="Markdown",
                 )
 
 
