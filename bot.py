@@ -297,6 +297,28 @@ def get_all_birthdays_formatted(chat_id: int, need_id: bool = False) -> str:
     return markdown_message
 
 
+def get_all_birthdays_for_share(chat_id: int) -> str:
+    all_birthdays = get_all_birthdays(chat_id)
+
+    if not all_birthdays:
+        return ""
+
+    formatted_birthdays = []
+    for line in all_birthdays.split("\n"):
+        date_str, name, *rest = line.split(", ")
+        date = datetime.strptime(
+            date_str, "%d %B %Y" if "Current age" in line else "%d %B"
+        )
+        if date.year != utils.DEFAULT_BD_YEAR:
+            formatted_date = date.strftime("%d.%m.%Y")
+        else:
+            formatted_date = date.strftime("%d.%m")
+        formatted_birthdays.append(name)
+        formatted_birthdays.append(formatted_date)
+
+    return "\n".join(formatted_birthdays)
+
+
 def send_backup(message):
     all_birthdays = get_all_birthdays_formatted(message.chat.id)
 
@@ -361,6 +383,11 @@ def process_birthday_pings():
         except Exception as e:
             logging.error(f"Error during birthday ping processing: {e}")
             utils.log_exception(e)
+
+
+def send_share_message(message):
+    all_birthdays = get_all_birthdays_for_share(message.chat.id)
+    bot.send_message(message.chat.id, all_birthdays, parse_mode="Markdown")
 
 
 def register_birthday(message):
@@ -505,6 +532,7 @@ def handle_message(message):
                 handle_stats(message)
                 return
             case TCommand.Share:
+                send_share_message(message)
                 return
             case _:
                 raise ValueError("Unknown command")
