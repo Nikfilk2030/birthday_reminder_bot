@@ -75,6 +75,32 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
     return None
 
 
+def validate_birthday_input(message: str) -> tuple[bool, str]:
+    lines = message.strip().split("\n")
+    if len(lines) % 2 != 0:
+        return False, (
+            "It seems like your input is incomplete. "
+            "Please ensure each name is followed by a date on a new line."
+        )
+
+    for i in range(0, len(lines), 2):
+        _ = lines[i].strip()  # name
+        date_str = lines[i + 1].strip()
+
+        success, parsed_date, has_year = parse_date(date_str)
+        if not success:
+            return False, (
+                f"I couldn't parse the date '{date_str}' on line {i + 2}. "
+                "Please use one of the following formats:\n"
+                "- day.month.year (e.g., 5.06.2001)\n"
+                "- day.month (e.g., 5.06)\n"
+                "- day.month age (e.g., 5.06 19)\n"
+                "Ensure the date is valid and within the last 200 years."
+            )
+
+    return True, ""
+
+
 def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
     current_year = datetime.now().year
     date_parts = date_str.split()
@@ -123,6 +149,23 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
         return True, parsed_date, has_year
     except ValueError:
         return False, None, False
+
+
+def parse_dates(message: str) -> tuple[bool, list[tuple[str, datetime, bool]]]:
+    lines = message.strip().split("\n")
+    if len(lines) % 2 != 0:
+        return False, []
+
+    parsed_birthdays = []
+    for i in range(0, len(lines), 2):
+        name = lines[i].strip()
+        date_str = lines[i + 1].strip()
+        success, parsed_date, has_year = parse_date(date_str)
+        if not success:
+            return False, []
+        parsed_birthdays.append((name, parsed_date, has_year))
+
+    return True, parsed_birthdays
 
 
 def log_exception(exc: Exception):
