@@ -73,6 +73,28 @@ docker compose up --build
 - `/register_backup` - Set up automatic backups
 - `/unregister_backup` - Disable automatic backups
 
+### Group Chat Support
+
+The Birthday Reminder Bot can also be added to group chats to help manage birthdays collectively. Here's how to set it up:
+
+1. **Add the Bot to a Group Chat:**
+   - Open the group chat where you want to add the bot.
+   - Tap on the group name at the top to open the group settings.
+   - Select "Add Member" and search for your bot by its username.
+   - Add the bot to the group.
+
+2. **Set Permissions:**
+   - Ensure the bot has the necessary permissions to function correctly:
+     - **Send Messages:** The bot needs to send reminders and notifications.
+     - **Read Messages:** The bot should be able to read messages to respond to commands.
+     - **Manage Messages (optional):** If you want the bot to delete its own messages after a certain period.
+
+3. **Using the Bot in Group Chats:**
+   - The bot can register and remind birthdays for all group members.
+   - Use the same commands as in private chats to manage birthdays.
+   - Ensure that the bot is mentioned in commands if the group settings require it (e.g., `/register_birthday@YourBotUsername`).
+
+
 ### Date Input Formats
 
 The bot accepts various date formats:
