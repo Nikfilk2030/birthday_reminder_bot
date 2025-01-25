@@ -39,6 +39,7 @@ class TUserState(enum.Enum):
     Default = "default"
     AwaitingInterval = "awaiting_interval"
     AwaitingDeletion = "awaiting_deletion"
+    AwaitingBirthday = "awaiting_birthday"
 
 
 class TCommand(enum.Enum):
@@ -325,7 +326,7 @@ def register_birthday(message):
         reply_markup=get_main_buttons(),
     )
 
-    user_states[chat_id] = TUserState.Default
+    user_states[chat_id] = TUserState.AwaitingBirthday
 
 
 def process_backup_pings():
@@ -495,6 +496,12 @@ def handle_message(message):
                 logging.error(f"Error deleting birthday for Chat ID {chat_id}: {e}")
         case _:  # Awaiting name and date
             try:
+                if (
+                    message.chat.type in ["group", "supergroup"]
+                    and user_states[chat_id] != TUserState.AwaitingBirthday
+                ):
+                    return
+
                 splitted_message = user_message.split("\n")
 
                 if len(splitted_message) != 2:
