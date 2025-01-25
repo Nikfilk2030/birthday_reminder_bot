@@ -65,9 +65,9 @@ class TBirthday:
             age = current_year - self.birthday.year
             if datetime.now().replace(year=self.birthday.year) < self.birthday:
                 age -= 1
-            age_text = f" ({age} years)"
+            age_text = f" (Current age: {age} years), "
 
-        return f"ID: {self.id},\t{self.name},\t{birthday_str}{age_text}"
+        return f"{birthday_str}, {self.name},{age_text} ID: {self.id}"
 
 
 def init_db() -> None:
@@ -334,7 +334,6 @@ def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
 
         birthdays = cursor.fetchall()
         conn.close()
-        logging.info(f"Retrieved upcoming birthdays (excluding reminded): {birthdays}")
 
         return birthdays
     except sqlite3.Error as e:
