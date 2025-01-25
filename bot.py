@@ -134,8 +134,6 @@ def get_reminder_settings_keyboard(chat_id) -> InlineKeyboardMarkup:
 
 
 def handle_start(message):
-    logging.info(f"Received /start or /help command from Chat ID {message.chat.id}")
-
     user_states[message.chat.id] = TUserState.Default
 
     backup_ping_settings = db.select_from_backup_ping(message.chat.id)
@@ -303,9 +301,6 @@ def process_birthday_pings():
                             )
 
                         bot.send_message(chat_id, reminder_text)
-                        logging.info(
-                            f"Sent reminder to Chat ID {chat_id}: {reminder_text}"
-                        )
 
                         db.mark_birthday_reminder_sent(id, days_until)
 
@@ -316,6 +311,7 @@ def process_birthday_pings():
 
 def register_birthday(message):
     chat_id = message.chat.id
+
 
     bot.send_message(
         chat_id,
@@ -329,11 +325,14 @@ def register_birthday(message):
             "- day.month (5.06)\n"
             "- day.month age (5.06 19)\n"
             "\n"
+            "*Note:* You can add multiple birthdays by separating them with a new line.\n"
             "*Note:* Dates must be within the last 200 years and years must be written in full 4-digit format (e.g., 1994 not 94)\n"
             "\n"
             "*Example:*\n"
             "John Doe\n"
             "15.05.1990"
+            "Jane Doe\n"
+            "10.06.1991"
             "\n\n"
         ),
         parse_mode="Markdown",
@@ -405,7 +404,6 @@ def unregister_backup(message):
         reply_markup=get_reply_markup(message),
         parse_mode="Markdown",
     )
-    logging.info(f"Unregistered auto-backup for Chat ID {chat_id}.")
 
     user_states[chat_id] = None
 
@@ -468,9 +466,6 @@ def handle_message(message):
                     reply_markup=get_reply_markup(message),
                     parse_mode="Markdown",
                 )
-                logging.info(
-                    f"Registered auto-backup for Chat ID {chat_id} with interval {interval_in_minutes} minute(s)."
-                )
 
                 user_states[chat_id] = None
 
@@ -506,9 +501,6 @@ def handle_message(message):
                         f"Successfully deleted birthdays with IDs: {', '.join(map(str, deleted_ids))}.",
                         reply_markup=get_reply_markup(message),
                         parse_mode="Markdown",
-                    )
-                    logging.info(
-                        f"Deleted birthdays for Chat ID {chat_id}: {deleted_ids}"
                     )
 
                 if not_found_ids:
@@ -569,7 +561,6 @@ def handle_message(message):
                     reply_markup=get_reply_markup(message),
                     parse_mode="Markdown",
                 )
-                logging.info(f"Registered multiple birthdays for Chat ID {chat_id}.")
 
                 user_states[chat_id] = None
 
