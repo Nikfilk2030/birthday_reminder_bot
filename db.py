@@ -384,10 +384,11 @@ def delete_birthday(chat_id: int, birthday_id: int) -> None:
         )
 
         conn.commit()
+        deleted_rows = cursor.rowcount
         conn.close()
-        logging.info(f"Deleted Birthday ID {birthday_id} for Chat ID {chat_id}")
 
-        return cursor.rowcount
+        return deleted_rows
     except sqlite3.Error as e:
         logging.error(f"Error deleting birthday: {e}")
         utils.log_exception(e)
+        return 0
