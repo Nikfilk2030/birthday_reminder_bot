@@ -14,7 +14,7 @@ import db
 import utils
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]",
     handlers=[
         logging.FileHandler("bot.log"),
@@ -182,6 +182,8 @@ def handle_stats(message):
         parse_mode="Markdown",
     )
 
+    user_states[chat_id] = TUserState.Default
+
 
 def handle_start(message):
     user_states[message.chat.id] = TUserState.Default
@@ -289,6 +291,8 @@ def get_all_birthdays_formatted(chat_id: int, need_id: bool = False) -> str:
         for birthday in birthdays:
             markdown_message += f"- {birthday}\n"
         markdown_message += "\n"
+
+    user_states[chat_id] = TUserState.Default
 
     return markdown_message
 
@@ -454,12 +458,11 @@ def unregister_backup(message):
         parse_mode="Markdown",
     )
 
-    user_states[chat_id] = None
+    user_states[chat_id] = TUserState.Default
 
 
 def handle_deletion(message):
     chat_id = message.chat.id
-    user_states[chat_id] = TUserState.AwaitingDeletion
     all_birthdays = get_all_birthdays_formatted(message.chat.id, need_id=True)
 
     bot.send_message(
@@ -468,6 +471,8 @@ def handle_deletion(message):
         reply_markup=get_reply_markup(message),
         parse_mode="Markdown",
     )
+
+    user_states[chat_id] = TUserState.AwaitingDeletion
 
 
 @bot.message_handler(func=lambda message: True)
@@ -521,7 +526,7 @@ def handle_message(message):
                     parse_mode="Markdown",
                 )
 
-                user_states[chat_id] = None
+                user_states[chat_id] = TUserState.Default
 
             except Exception as e:
                 logging.error(
@@ -533,7 +538,6 @@ def handle_message(message):
                     reply_markup=get_reply_markup(message),
                     parse_mode="Markdown",
                 )
-                utils.log_exception(e)
         case TUserState.AwaitingDeletion:
             try:
                 birthday_ids = [
@@ -568,7 +572,7 @@ def handle_message(message):
                         f"Could not find birthdays for Chat ID {chat_id}: {not_found_ids}"
                     )
 
-                user_states[chat_id] = None
+                user_states[chat_id] = TUserState.Default
 
             except ValueError:
                 bot.send_message(
@@ -618,7 +622,7 @@ def handle_message(message):
                     parse_mode="Markdown",
                 )
 
-                user_states[chat_id] = None
+                user_states[chat_id] = TUserState.Default
 
             except Exception:
                 bot.send_message(
