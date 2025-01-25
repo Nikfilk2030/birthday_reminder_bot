@@ -68,7 +68,7 @@ docker compose up --build
 
 - `/start` - Initialize the bot and see available commands
 - `/register_birthday` - Add a new birthday
-- `/delete_birthday` - Remove a birthday
+- `/delete_birthday` - Remove one or more birthdays by specifying their IDs separated by commas (e.g., "1, 2, 3")
 - `/backup` - Get a list of all saved birthdays
 - `/register_backup` - Set up automatic backups
 - `/unregister_backup` - Disable automatic backups

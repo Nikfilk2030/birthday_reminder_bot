@@ -393,6 +393,8 @@ def unregister_backup(message):
     )
     logging.info(f"Unregistered auto-backup for Chat ID {chat_id}.")
 
+    user_states[chat_id] = None
+
 
 def handle_deletion(message):
     chat_id = message.chat.id
@@ -401,8 +403,7 @@ def handle_deletion(message):
 
     bot.send_message(
         chat_id,
-        "Enter the ID of the birthday you want to delete:"
-        f"\n\n{all_birthdays if all_birthdays else 'No birthdays found.'}",
+        f"Enter the IDs of the birthdays you want to delete, separated by commas:\n\n{all_birthdays if all_birthdays else 'No birthdays found.'}",
         reply_markup=get_main_buttons(),
         parse_mode="Markdown",
     )
@@ -412,7 +413,6 @@ def handle_deletion(message):
 def handle_message(message):
     chat_id = message.chat.id
     user_message = message.text.strip()
-    logging.info(f"Received message from Chat ID {chat_id}: {user_message}")
 
     global button_to_command
     if message.text in button_to_command.keys():
@@ -473,27 +473,53 @@ def handle_message(message):
                 utils.log_exception(e)
         case TUserState.AwaitingDeletion:
             try:
-                birthday_id = int(user_message)
-                deleted_rows = db.delete_birthday(chat_id, birthday_id)
-                if deleted_rows == 0:
-                    raise ValueError("Birthday not found")
-                bot.send_message(
-                    chat_id,
-                    f"Birthday deleted successfully. ID: {birthday_id}",
-                    reply_markup=get_main_buttons(),
-                    parse_mode="Markdown",
-                )
-                logging.info(f"Deleted birthday for Chat ID {chat_id}.")
+                birthday_ids = [
+                    int(id_str.strip()) for id_str in user_message.split(",")
+                ]
+                deleted_ids = []
+                not_found_ids = []
+
+                for birthday_id in birthday_ids:
+                    deleted_rows = db.delete_birthday(chat_id, birthday_id)
+                    if deleted_rows > 0:
+                        deleted_ids.append(birthday_id)
+                    else:
+                        not_found_ids.append(birthday_id)
+
+                if deleted_ids:
+                    bot.send_message(
+                        chat_id,
+                        f"Successfully deleted birthdays with IDs: {', '.join(map(str, deleted_ids))}.",
+                        reply_markup=get_main_buttons(),
+                        parse_mode="Markdown",
+                    )
+                    logging.info(
+                        f"Deleted birthdays for Chat ID {chat_id}: {deleted_ids}"
+                    )
+
+                if not_found_ids:
+                    bot.send_message(
+                        chat_id,
+                        f"Could not find birthdays with IDs: {', '.join(map(str, not_found_ids))}.",
+                        reply_markup=get_main_buttons(),
+                        parse_mode="Markdown",
+                    )
+                    logging.warning(
+                        f"Could not find birthdays for Chat ID {chat_id}: {not_found_ids}"
+                    )
+
                 user_states[chat_id] = None
+
             except ValueError:
                 bot.send_message(
                     chat_id,
-                    "Invalid ID. Please enter a numerical ID or check the list of birthdays.",
+                    "Invalid input. Please enter numerical IDs separated by commas.",
                     reply_markup=get_main_buttons(),
                     parse_mode="Markdown",
                 )
             except Exception as e:
-                logging.error(f"Error deleting birthday for Chat ID {chat_id}: {e}")
+                logging.error(f"Error deleting birthdays for Chat ID {chat_id}: {e}")
+
         case _:  # Awaiting name and date
             try:
                 if (
@@ -502,19 +528,17 @@ def handle_message(message):
                 ):
                     return
 
-                chat_id = message.chat.id
-                user_message = message.text.strip()
-
-                success, parsed_birthdays = utils.parse_dates(user_message)
+                success, error_message = utils.validate_birthday_input(user_message)
                 if not success:
                     bot.send_message(
                         chat_id,
-                        "Invalid format. Please ensure each name is followed by a date on a new line.",
+                        error_message,
                         reply_markup=get_main_buttons(),
                         parse_mode="Markdown",
                     )
                     return
 
+                success, parsed_birthdays = utils.parse_dates(user_message)
                 for name, parsed_date, has_year in parsed_birthdays:
                     db.register_birthday(chat_id, name, parsed_date, has_year)
 
@@ -535,8 +559,7 @@ def handle_message(message):
 
                 user_states[chat_id] = None
 
-            except Exception as e:
-                logging.error(f"Error processing name input for Chat ID {chat_id}: {e}")
+            except Exception:
                 bot.send_message(
                     chat_id,
                     "Invalid name format. Please try again.",

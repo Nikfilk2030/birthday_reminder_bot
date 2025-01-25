@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 
 import db
 import utils
-from utils import get_time, is_timestamp_valid, parse_date
+from utils import (get_time, is_timestamp_valid, parse_date,
+                   validate_birthday_input)
 
 
 class TestTimestampParser(unittest.TestCase):
@@ -93,6 +94,31 @@ class TestParseDate(unittest.TestCase):
         self.assertEqual(
             parse_date("31.04"), (False, None, False)
         )  # April has only 30 days
+
+
+class TestValidateBirthdayInput(unittest.TestCase):
+    def test_incomplete_input(self):
+        message = "John Doe\n15.05.1990\nJane Smith"
+        success, error_message = validate_birthday_input(message)
+        self.assertFalse(success)
+        self.assertIn("incomplete", error_message)
+
+    def test_empty_name(self):
+        message = "\n15.05.1990"
+        success, error_message = validate_birthday_input(message)
+        self.assertFalse(success)
+
+    def test_invalid_date_format(self):
+        message = "John Doe\n32.13.2000"
+        success, error_message = validate_birthday_input(message)
+        self.assertFalse(success)
+        self.assertIn("couldn't parse the date '32.13.2000'", error_message)
+
+    def test_valid_input(self):
+        message = "John Doe\n15.05.1990\nJane Smith\n20.06.1985"
+        success, error_message = validate_birthday_input(message)
+        self.assertTrue(success)
+        self.assertEqual(error_message, "")
 
 
 class TestDatabase(unittest.TestCase):
@@ -242,6 +268,70 @@ class TestMultipleBirthdayRegistration(unittest.TestCase):
         message = "John Doe\n15.05.1990\nInvalid Date\n32.13.2000"
         success, _ = utils.parse_dates(message)
         self.assertFalse(success)
+
+
+class TestMultipleBirthdayDeletion(unittest.TestCase):
+    def setUp(self):
+        self.test_chat_id = 123456789
+        db.DB_FILE = "test_data.db"
+        db.init_db()
+
+        # Register some birthdays
+        db.register_birthday(self.test_chat_id, "John Doe", datetime(1990, 5, 15), True)
+        db.register_birthday(
+            self.test_chat_id, "Jane Smith", datetime(1985, 6, 20), True
+        )
+        db.register_birthday(
+            self.test_chat_id, "Alice Johnson", datetime(1992, 7, 25), True
+        )
+
+    def tearDown(self):
+        if os.path.exists(db.DB_FILE):
+            os.remove(db.DB_FILE)
+
+    def test_delete_multiple_birthdays(self):
+        # Attempt to delete multiple birthdays
+        message = "1, 2"
+        chat_id = self.test_chat_id
+
+        # Simulate deletion
+        birthday_ids = [int(id_str.strip()) for id_str in message.split(",")]
+        deleted_ids = []
+        not_found_ids = []
+
+        for birthday_id in birthday_ids:
+            deleted_rows = db.delete_birthday(chat_id, birthday_id)
+            if deleted_rows > 0:
+                deleted_ids.append(birthday_id)
+            else:
+                not_found_ids.append(birthday_id)
+
+        self.assertEqual(deleted_ids, [1, 2])
+        self.assertEqual(not_found_ids, [])
+
+        # Check remaining birthdays
+        remaining_birthdays = db.get_all_birthdays(chat_id)
+        self.assertEqual(len(remaining_birthdays), 1)
+        self.assertIn("Alice Johnson", remaining_birthdays[0])
+
+    def test_delete_nonexistent_birthdays(self):
+        # Attempt to delete a non-existent birthday
+        message = "99"
+        chat_id = self.test_chat_id
+
+        birthday_ids = [int(id_str.strip()) for id_str in message.split(",")]
+        deleted_ids = []
+        not_found_ids = []
+
+        for birthday_id in birthday_ids:
+            deleted_rows = db.delete_birthday(chat_id, birthday_id)
+            if deleted_rows > 0:
+                deleted_ids.append(birthday_id)
+            else:
+                not_found_ids.append(birthday_id)
+
+        self.assertEqual(deleted_ids, [])
+        self.assertEqual(not_found_ids, [99])
 
 
 if __name__ == "__main__":
