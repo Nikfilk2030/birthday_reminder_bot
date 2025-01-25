@@ -158,6 +158,34 @@ def update_reminder_settings(chat_id, days):
     conn.close()
 
 
+def get_all_birthdays_for_all_chats(need_id: bool = False) -> list[str]:
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            WITH ordered_birthdays AS (
+                SELECT *,
+                    CASE
+                        WHEN strftime('%m-%d', birthday) >= strftime('%m-%d', 'now')
+                        THEN 0  -- This year
+                        ELSE 1  -- Next year
+                    END as year_offset,
+                    strftime('%m-%d', birthday) as date_without_year
+                FROM birthdays
+            )
+            SELECT * FROM ordered_birthdays
+            ORDER BY year_offset, date_without_year
+            """,
+        )
+        birthdays = cursor.fetchall()
+        conn.close()
+        return [str(TBirthday(birthday, need_id)) for birthday in birthdays]
+    except sqlite3.Error as e:
+        logging.error(f"Error retrieving birthdays from database: {e}")
+        utils.log_exception(e)
+
+
 def get_all_birthdays(chat_id: int, need_id: bool = False) -> list[str]:
     try:
         conn = sqlite3.connect(DB_FILE)
@@ -199,7 +227,6 @@ def get_all_chat_ids() -> list[int]:
         )
         chat_ids = cursor.fetchall()
         conn.close()
-        logging.info(f"Retrieved chat IDs: {chat_ids}")
         return chat_ids
     except sqlite3.Error as e:
         logging.error(f"Error retrieving chat_ids from database: {e}")
@@ -225,7 +252,6 @@ def register_backup_ping(chat_id: int, update_timedelta: int) -> None:
 
         conn.commit()
         conn.close()
-        logging.info(f"Registered or updated backup ping for Chat ID {chat_id}")
     except sqlite3.Error as e:
         logging.error(f"Error registering backup ping: {e}")
         utils.log_exception(e)
@@ -245,7 +271,6 @@ def update_backup_ping(chat_id: int) -> None:
         )
         conn.commit()
         conn.close()
-        logging.info(f"Updated last backup sent for Chat ID {chat_id}")
     except sqlite3.Error as e:
         logging.error(f"Error updating last backup sent: {e}")
         utils.log_exception(e)
@@ -265,7 +290,6 @@ def unregister_backup_ping(chat_id: int) -> None:
         )
         conn.commit()
         conn.close()
-        logging.info(f"Unregistered backup ping for Chat ID {chat_id}")
     except sqlite3.Error as e:
         logging.error(f"Error unregistering backup ping: {e}")
         utils.log_fexception(e)
@@ -283,7 +307,6 @@ def select_from_backup_ping(chat_id: int) -> TBackupPingSettings:
         )
         data = cursor.fetchone()
         conn.close()
-        logging.info(f"Retrieved last backup sent for Chat ID {chat_id}: {data}")
         return TBackupPingSettings(data)
     except sqlite3.Error as e:
         logging.error(f"Error retrieving last backup sent: {e}")
@@ -308,9 +331,6 @@ def register_birthday(
         )
         conn.commit()
         conn.close()
-        logging.info(
-            f"Birthday registered: [Chat ID: {chat_id}, Name: {name}, Birthday: {birthday_str}, Has Year: {has_year}]"
-        )
     except sqlite3.Error as e:
         logging.error(f"Error registering birthday: {e}")
         utils.log_exception(e)
@@ -362,9 +382,6 @@ def mark_birthday_reminder_sent(birthday_id: int, days_ago: int) -> None:
 
         conn.commit()
         conn.close()
-        logging.info(
-            f"Marked reminder as sent for Birthday ID {birthday_id}, {days_ago} days ago."
-        )
     except sqlite3.Error as e:
         logging.error(f"Error marking reminder as sent: {e}")
         utils.log_exception(e)

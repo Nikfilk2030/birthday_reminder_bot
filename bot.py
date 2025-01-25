@@ -49,6 +49,8 @@ class TCommand(enum.Enum):
     RegisterBackup = "register_backup"
     UnregisterBackup = "unregister_backup"
     DeleteBirthday = "delete_birthday"
+    Stats = "stats"
+    Share = "share"
 
 
 button_to_command = {
@@ -70,6 +72,12 @@ button_to_command = {
     #
     "❌ Delete Birthday": TCommand.DeleteBirthday,
     "/delete_birthday": TCommand.DeleteBirthday,
+    #
+    "🔗 Share": TCommand.Share,
+    "/share": TCommand.Share,
+    #
+    "📊 Stats": TCommand.Stats,
+    "/stats": TCommand.Stats,
 }
 
 
@@ -80,6 +88,8 @@ description_to_command = {
     "💾 Backup": "Get a list of all your birthdays.",
     "🔐 Register Backup": "Register a new backup interval.",
     "🚫 Unregister Backup": "Unregister a backup interval.",
+    "🔗 Share": "Share your birthdays with your friends.",
+    "📊 Stats": "Get different statistics.",
 }
 
 
@@ -93,6 +103,8 @@ def get_main_buttons():
         KeyboardButton("🔐 Register Backup"),
         KeyboardButton("❌ Delete Birthday"),
         KeyboardButton("🚫 Unregister Backup"),
+        KeyboardButton("🔗 Share"),
+        KeyboardButton("📊 Stats"),
     ]
 
     markup.add(*buttons)
@@ -131,6 +143,44 @@ def get_reminder_settings_keyboard(chat_id) -> InlineKeyboardMarkup:
     markup.row(reminder_buttons[2], reminder_buttons[3])
 
     return markup
+
+
+def handle_stats(message):
+    chat_id = message.chat.id
+
+    total_birthdays_for_this_chat = len(db.get_all_birthdays(chat_id))
+    total_birthdays_for_all_chats = len(db.get_all_birthdays_for_all_chats())
+    total_users = len(set(chat_id for chat_id, in db.get_all_chat_ids()))
+
+    current_month = datetime.now().month
+    birthdays_this_month = []
+
+    for birthday in db.get_all_birthdays(chat_id):
+        date_str = birthday.split(", ")[0]
+        try:
+            date = datetime.strptime(date_str, "%d %B %Y")
+        except ValueError:
+            date = datetime.strptime(date_str, "%d %B")
+
+        if date.month == current_month:
+            birthdays_this_month.append(birthday)
+
+    total_birthdays_this_month = len(birthdays_this_month)
+
+    stats_message = (
+        f"📊 *Statistics:*\n\n"
+        f"Total Birthdays in this Month: {total_birthdays_this_month}\n"
+        f"Total Birthdays in this Chat: {total_birthdays_for_this_chat}\n"
+        f"Total Birthdays in all Chats: {total_birthdays_for_all_chats}\n"
+        f"Total Users: {total_users}\n"
+    )
+
+    bot.send_message(
+        chat_id,
+        stats_message,
+        reply_markup=get_reply_markup(message),
+        parse_mode="Markdown",
+    )
 
 
 def handle_start(message):
@@ -312,7 +362,6 @@ def process_birthday_pings():
 def register_birthday(message):
     chat_id = message.chat.id
 
-
     bot.send_message(
         chat_id,
         (
@@ -447,6 +496,11 @@ def handle_message(message):
             case TCommand.DeleteBirthday:
                 handle_deletion(message)
                 return
+            case TCommand.Stats:
+                handle_stats(message)
+                return
+            case TCommand.Share:
+                return
             case _:
                 raise ValueError("Unknown command")
 
@@ -548,16 +602,18 @@ def handle_message(message):
                 for name, parsed_date, has_year in parsed_birthdays:
                     db.register_birthday(chat_id, name, parsed_date, has_year)
 
-                birthdays_msg = "\n".join(
-                    [
-                        f"- {name}: {parsed_date.strftime('%d %B %Y')}"
-                        for name, parsed_date, has_year in parsed_birthdays
-                    ]
-                )
+                birthday_msg = ""
+                for name, parsed_date, has_year in parsed_birthdays:
+                    if has_year:
+                        birthday_msg += (
+                            f"- {name}: {parsed_date.strftime('%d %B %Y')}\n"
+                        )
+                    else:
+                        birthday_msg += f"- {name}: {parsed_date.strftime('%d %B')}\n"
 
                 bot.send_message(
                     chat_id,
-                    f"Birthdays registered successfully!\n{birthdays_msg}",
+                    f"Birthdays registered successfully!\n{birthday_msg}",
                     reply_markup=get_reply_markup(message),
                     parse_mode="Markdown",
                 )
