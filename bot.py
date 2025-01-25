@@ -291,7 +291,7 @@ def register_birthday(message):
             "- day.month (5.06)\n"
             "- day.month age (5.06 19)\n"
             "\n"
-            "*Note:* Dates must be within the last 100 years and years must be written in full 4-digit format (e.g., 1994 not 94)\n"
+            "*Note:* Dates must be within the last 200 years and years must be written in full 4-digit format (e.g., 1994 not 94)\n"
             "\n"
             "*Example:*\n"
             "John Doe\n"
