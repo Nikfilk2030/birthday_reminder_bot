@@ -4,6 +4,8 @@ import re
 from datetime import datetime, timedelta
 from typing import List, Union
 
+DEFAULT_BD_YEAR = 1900
+
 TDuration = int
 
 TIME_MAP = {
