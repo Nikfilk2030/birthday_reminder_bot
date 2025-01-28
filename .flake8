@@ -3,7 +3,7 @@
 max-line-length = 200
 
 # Exclude some common directories
-exclude = 
+exclude =
     .git,
     __pycache__,
     build,
@@ -18,3 +18,5 @@ count = True
 # Optionally, add plugins configuration if you use any
 # max-complexity could be set if you want to limit cyclomatic complexity
 # max-complexity = 10
+
+ignore = E203, W503
