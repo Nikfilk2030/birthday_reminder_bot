@@ -8,7 +8,7 @@ from datetime import datetime
 import telebot
 from dotenv import load_dotenv
 from telebot.types import (InlineKeyboardButton, InlineKeyboardMarkup,
-                           ReplyKeyboardMarkup, ReplyKeyboardRemove)
+                           ReplyKeyboardMarkup)
 
 import db
 import utils
@@ -196,13 +196,6 @@ def handle_start(message):
         ]
     )
 
-    # TODO remove
-    bot.send_message(
-        message.chat.id,
-        "Removing existing keyboard...",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
     bot.send_message(
         message.chat.id,
         f"""
@@ -303,7 +296,7 @@ def get_all_birthdays_for_share(chat_id: int) -> str:
     all_birthdays = get_all_birthdays(chat_id)
 
     if not all_birthdays:
-        return ""
+        return "Nothing found"
 
     formatted_birthdays = []
     for line in all_birthdays.split("\n"):
