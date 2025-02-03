@@ -195,3 +195,22 @@ def cleanup_old_logs(log_dir=".", max_days=30):
                     logging.info(f"Deleted old log file: {filename}")
                 except Exception as e:
                     logging.error(f"Failed to delete old log file {filename}: {e}")
+
+
+def split_message(message: str, max_length: int = 4096) -> list[str]:
+    """Splits a message into chunks of full lines, each within the specified maximum length."""
+    lines = message.split("\n")
+    chunks = []
+    current_chunk = []
+
+    for line in lines:
+        if sum(len(chunk) + 1 for chunk in current_chunk) + len(line) + 1 > max_length:
+            chunks.append("\n".join(current_chunk))
+            current_chunk = []
+
+        current_chunk.append(line)
+
+    if current_chunk:
+        chunks.append("\n".join(current_chunk))
+
+    return chunks
