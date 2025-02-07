@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+from collections import defaultdict
 from datetime import datetime
 
 import telebot
@@ -31,6 +32,13 @@ if not TOKEN:
 bot = telebot.TeleBot(TOKEN)
 
 user_states = {}
+
+# Global dictionary to track messages related to birthday registration
+birthday_registration_messages = defaultdict(list)
+# Global dictionary to track messages related to birthday deletion
+birthday_deletion_messages = defaultdict(list)
+# Global dictionary to track messages related to backup registration
+register_backup_messages = defaultdict(list)
 
 REMINDED_DAYS = [0, 1, 3, 7]
 
@@ -305,6 +313,9 @@ def handle_stats(message):
 def handle_start(message):
     user_states[message.chat.id] = TUserState.Default
 
+    # remove /start command itself
+    bot.delete_message(message.chat.id, message.message_id)
+
     backup_ping_settings = db.select_from_backup_ping(message.chat.id)
     if backup_ping_settings.is_active:
         backup_ping_msg = f"You have an active backup ping every {backup_ping_settings.update_timedelta} minute(s).\n"
@@ -513,7 +524,7 @@ def send_share_message(message):
 def register_birthday(message):
     chat_id = message.chat.id
 
-    bot.send_message(
+    instruct_msg = bot.send_message(
         chat_id,
         (
             "*Please enter the birthday details in the following format:*\n"
@@ -537,6 +548,7 @@ def register_birthday(message):
         parse_mode="Markdown",
     )
 
+    birthday_registration_messages[chat_id] = set([instruct_msg.message_id])
     user_states[chat_id] = TUserState.AwaitingBirthday
 
 
@@ -583,11 +595,13 @@ def process_backup_pings():
 def register_backup(message):
     chat_id = message.chat.id
 
-    bot.send_message(
+    msg = bot.send_message(
         chat_id,
         "Please enter the interval at which to send backup (1 month, 1year, 1год, etc).",
         parse_mode="Markdown",
     )
+
+    register_backup_messages[chat_id] = [msg.message_id]
 
     user_states[chat_id] = TUserState.AwaitingInterval
 
@@ -609,13 +623,17 @@ def handle_deletion(message):
     all_birthdays = get_all_birthdays_formatted(message.chat.id, need_id=True)
     birthdays_messages = utils.split_message(all_birthdays)
 
-    bot.send_message(
+    instruct_msg = bot.send_message(
         chat_id,
         "Enter the IDs of the birthdays you want to delete, separated by commas",
         parse_mode="Markdown",
     )
+
+    birthday_deletion_messages[chat_id] = [instruct_msg.message_id]
+
     for birthday_message in birthdays_messages:
-        bot.send_message(chat_id, birthday_message, parse_mode="Markdown")
+        msg = bot.send_message(chat_id, birthday_message, parse_mode="Markdown")
+        birthday_deletion_messages[chat_id].append(msg.message_id)
 
     user_states[chat_id] = TUserState.AwaitingDeletion
 
@@ -706,15 +724,23 @@ def handle_message(message):
 
                 user_states[chat_id] = TUserState.Default
 
-            except Exception as e:
-                logging.error(
-                    f"Error processing interval input for Chat ID {chat_id}: {e}"
-                )
-                bot.send_message(
+                bot.delete_message(chat_id, message.message_id)
+
+                for old_message_id in register_backup_messages[chat_id]:
+                    bot.delete_message(chat_id, old_message_id)
+
+                if chat_id in register_backup_messages.keys():
+                    del register_backup_messages[chat_id]
+
+            except Exception:
+                error_msg = bot.send_message(
                     chat_id,
                     "Invalid interval format. Please try again using a format like '1 month'.",
                     parse_mode="Markdown",
                 )
+
+                register_backup_messages[chat_id].append(error_msg.message_id)
+
         case TUserState.AwaitingDeletion:
             try:
                 birthday_ids = [
@@ -749,12 +775,21 @@ def handle_message(message):
 
                 user_states[chat_id] = TUserState.Default
 
+                birthday_deletion_messages[chat_id].append(message.message_id)
+
+                for old_message_id in birthday_deletion_messages[chat_id]:
+                    bot.delete_message(chat_id, old_message_id)
+
+                if chat_id in birthday_deletion_messages.keys():
+                    del birthday_deletion_messages[chat_id]
+
             except ValueError:
-                bot.send_message(
+                error_msg = bot.send_message(
                     chat_id,
                     "Invalid input. Please enter numerical IDs separated by commas.",
                     parse_mode="Markdown",
                 )
+                birthday_deletion_messages[chat_id].append(error_msg.message_id)
             except Exception as e:
                 logging.error(f"Error deleting birthdays for Chat ID {chat_id}: {e}")
 
@@ -762,11 +797,12 @@ def handle_message(message):
             try:
                 success, error_message = utils.validate_birthday_input(user_message)
                 if not success:
-                    bot.send_message(
+                    err_msg = bot.send_message(
                         chat_id,
                         error_message,
                         parse_mode="Markdown",
                     )
+                    birthday_registration_messages[chat_id].add(err_msg.message_id)
                     return
 
                 success, parsed_birthdays = utils.parse_dates(user_message)
@@ -789,6 +825,14 @@ def handle_message(message):
                 )
 
                 user_states[chat_id] = TUserState.Default
+
+                bot.delete_message(chat_id, message.message_id)
+
+                for old_message_id in birthday_registration_messages[chat_id]:
+                    bot.delete_message(chat_id, old_message_id)
+
+                if chat_id in birthday_registration_messages.keys():
+                    del birthday_registration_messages[chat_id]
 
             except Exception:
                 bot.send_message(
