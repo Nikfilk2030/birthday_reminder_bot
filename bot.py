@@ -8,7 +8,7 @@ from datetime import datetime
 import telebot
 from dotenv import load_dotenv
 from telebot.types import (InlineKeyboardButton, InlineKeyboardMarkup,
-                           ReplyKeyboardMarkup)
+                           ReplyKeyboardRemove)
 
 import db
 import utils
@@ -101,7 +101,16 @@ def is_group_chat(message) -> bool:
     return message.chat.type in ["group", "supergroup"]
 
 
-def get_reply_markup(message) -> ReplyKeyboardMarkup | None:
+def remove_keyboard(message):
+    delete_message = bot.send_message(
+        message.chat.id,
+        "The keyboard has been removed.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    bot.delete_message(delete_message.chat.id, delete_message.message_id)
+
+
+def get_reply_markup(message) -> InlineKeyboardMarkup | None:
     markup = InlineKeyboardMarkup()
     buttons = [
         InlineKeyboardButton("🚀 Start", callback_data="🚀 Start"),
@@ -144,14 +153,18 @@ def get_reminder_settings_keyboard(chat_id) -> InlineKeyboardMarkup:
 def handle_stats(message):
     chat_id = message.chat.id
 
-    total_birthdays_for_this_chat = len(db.get_all_birthdays(chat_id))
-    total_birthdays_for_all_chats = len(db.get_all_birthdays_for_all_chats())
+    # Retrieve pre-formatted birthday strings used for display.
+    local_birthdays = db.get_all_birthdays(chat_id)
+    global_birthdays = db.get_all_birthdays_for_all_chats()
+
+    total_birthdays_for_this_chat = len(local_birthdays)
+    total_birthdays_for_all_chats = len(global_birthdays)
     total_users = len(set(chat_id for chat_id, in db.get_all_chat_ids()))
 
+    # Calculate birthdays in the current month for the local chat.
     current_month = datetime.now().month
     birthdays_this_month = []
-
-    for birthday in db.get_all_birthdays(chat_id):
+    for birthday in local_birthdays:
         date_str = birthday.split(", ")[0]
         try:
             date = datetime.strptime(date_str, "%d %B %Y")
@@ -160,16 +173,125 @@ def handle_stats(message):
 
         if date.month == current_month:
             birthdays_this_month.append(birthday)
-
     total_birthdays_this_month = len(birthdays_this_month)
 
-    stats_message = (
-        f"📊 *Statistics:*\n\n"
-        f"Total Birthdays in this Month: {total_birthdays_this_month}\n"
-        f"Total Birthdays in this Chat: {total_birthdays_for_this_chat}\n"
-        f"Total Birthdays in all Chats: {total_birthdays_for_all_chats}\n"
-        f"Total Users: {total_users}\n"
+    # Helper function to extract the month name from a birthday string.
+    def extract_month(birthday_line: str) -> str:
+        try:
+            date_part = birthday_line.split(",")[0].strip()
+            tokens = date_part.split(" ")
+            if len(tokens) >= 2:
+                return tokens[1]
+            return ""
+        except Exception:
+            return ""
+
+    # Calculate the most popular birthday month locally.
+    local_month_counts = {}
+    for birthday in local_birthdays:
+        month = extract_month(birthday)
+        if month:
+            local_month_counts[month] = local_month_counts.get(month, 0) + 1
+
+    if local_month_counts:
+        local_most_popular_month, local_count = max(
+            local_month_counts.items(), key=lambda x: x[1]
+        )
+    else:
+        local_most_popular_month, local_count = "N/A", 0
+
+    # Calculate the most popular birthday month globally.
+    global_month_counts = {}
+    for birthday in global_birthdays:
+        month = extract_month(birthday)
+        if month:
+            global_month_counts[month] = global_month_counts.get(month, 0) + 1
+
+    # Calculate most popular birthday month globally.
+    global_month_counts = {}
+    for birthday in global_birthdays:
+        month = extract_month(birthday)
+        if month:
+            global_month_counts[month] = global_month_counts.get(month, 0) + 1
+
+    if global_month_counts:
+        global_most_popular_month, global_count = max(
+            global_month_counts.items(), key=lambda x: x[1]
+        )
+    else:
+        global_most_popular_month, global_count = "N/A", 0
+
+    # Compute Age Statistics using the already given birthday strings.
+    # Only birthdays with a full_date (i.e. %d %B %Y format) are considered.
+    def compute_age_metrics(birthday_strings: list[str]):
+        ages = []
+        now = datetime.now()
+        current_year = now.year
+        for birthday in birthday_strings:
+            # Extract the date part
+            date_str = birthday.split(",")[0].strip()
+            try:
+                # Will work only if the date contains a full year.
+                date_dt = datetime.strptime(date_str, "%d %B %Y")
+            except ValueError:
+                continue  # skip birthdays with no full date
+            # Compute age and adjust if birthday hasn't taken place yet this year.
+            birthday_this_year = date_dt.replace(year=current_year)
+            age = current_year - date_dt.year
+            if now < birthday_this_year:
+                age -= 1
+            ages.append(age)
+        if ages:
+            avg_age = sum(ages) / len(ages)
+            min_age = min(ages)
+            max_age = max(ages)
+            return avg_age, min_age, max_age
+        return None, None, None
+
+    avg_age_local, min_age_local, max_age_local = compute_age_metrics(local_birthdays)
+    avg_age_global, min_age_global, max_age_global = compute_age_metrics(
+        global_birthdays
     )
+
+    if avg_age_local is not None:
+        local_age_stats = (
+            f"• Age Statistics:\n"
+            f"   - Average Age: {avg_age_local:.1f}\n"
+            f"   - Minimum Age: {min_age_local}\n"
+            f"   - Maximum Age: {max_age_local}\n"
+        )
+    else:
+        local_age_stats = "• Age Statistics: N/A (no birthdays with full date)\n"
+
+    if avg_age_global is not None:
+        global_age_stats = (
+            f"• Age Statistics:\n"
+            f"   - Average Age: {avg_age_global:.1f}\n"
+            f"   - Minimum Age: {min_age_global}\n"
+            f"   - Maximum Age: {max_age_global}\n"
+        )
+    else:
+        global_age_stats = "• Age Statistics: N/A (no birthdays with full date)\n"
+
+    # Assemble the local statistics.
+    local_stats = (
+        "📍 *Local Statistics:*\n\n"
+        f"• Total Birthdays in this Chat: {total_birthdays_for_this_chat}\n"
+        f"• Birthdays in this Month: {total_birthdays_this_month}\n"
+        f"• Most Popular Birthday Month: {local_most_popular_month} ({local_count} birthdays)\n"
+        f"{local_age_stats}"
+    )
+
+    # Assemble the global statistics.
+    global_stats = (
+        "🌐 *Global Statistics:*\n\n"
+        f"• Total Birthdays in All Chats: {total_birthdays_for_all_chats}\n"
+        f"• Total Users: {total_users}\n"
+        f"• Most Popular Birthday Month: {global_most_popular_month} ({global_count} birthdays)\n"
+        f"{global_age_stats}"
+    )
+
+    stats_message = f"{local_stats}\n{global_stats}"
 
     bot.send_message(
         chat_id,
@@ -529,6 +651,12 @@ def handle_callback_query(call):
 def handle_message(message):
     chat_id = message.chat.id
     user_message = message.text.strip()
+
+    if user_message == "/remove_keyboard":
+        bot.delete_message(chat_id, message.message_id)
+
+        remove_keyboard(message)
+        return
 
     global button_to_command
     if message.text in button_to_command.keys():
