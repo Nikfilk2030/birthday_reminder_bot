@@ -95,6 +95,21 @@ class TestParseDate(unittest.TestCase):
             parse_date("31.04"), (False, None, False)
         )  # April has only 30 days
 
+    def test_future_date(self):
+        future_year = datetime.now().year + 1
+        future_date_str = f"5.06.{future_year}"
+        success, parsed_date, has_year = parse_date(future_date_str)
+        self.assertFalse(success)
+        self.assertIsNone(parsed_date)
+        self.assertFalse(has_year)
+
+    def test_negative_age(self):
+        future_date_str = "5.06 -42"
+        success, parsed_date, has_year = parse_date(future_date_str)
+        self.assertFalse(success)
+        self.assertIsNone(parsed_date)
+        self.assertFalse(has_year)
+
 
 class TestValidateBirthdayInput(unittest.TestCase):
     def test_incomplete_input(self):

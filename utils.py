@@ -91,6 +91,17 @@ def validate_birthday_input(message: str) -> tuple[bool, str]:
 
         success, parsed_date, has_year = parse_date(date_str)
         if not success:
+            parts = date_str.split(".")
+            if len(parts) == 3:
+                try:
+                    day, month, year = map(int, parts)
+                    if year > datetime.now().year:
+                        return False, (
+                            f"Birthday '{date_str}' cannot be in the future. "
+                            "Please provide a valid past date."
+                        )
+                except Exception:
+                    pass
             return False, (
                 f"I couldn't parse the date '{date_str}' on line {i + 2}. "
                 "Please use one of the following formats:\n"
@@ -148,6 +159,8 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
             return False, None, False
 
         parsed_date = datetime(year, month, day)
+        if has_year and parsed_date > datetime.now():
+            return False, None, False
         return True, parsed_date, has_year
     except ValueError:
         return False, None, False
