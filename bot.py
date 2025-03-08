@@ -510,7 +510,6 @@ def process_birthday_pings():
 
         except Exception as e:
             logging.error(f"Error during birthday ping processing: {e}")
-            utils.log_exception(e)
 
 
 def send_share_message(message):
