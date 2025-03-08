@@ -587,8 +587,6 @@ def process_backup_pings():
 
         except Exception as e:
             logging.error(f"Error during backup ping processing: {e}")
-            utils.log_exception(e)
-            time.sleep(60)
 
 
 def register_backup(message):
