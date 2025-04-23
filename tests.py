@@ -349,5 +349,56 @@ class TestMultipleBirthdayDeletion(unittest.TestCase):
         self.assertEqual(not_found_ids, [99])
 
 
+def test_compute_age_metrics():
+    # Setup test data with different formats
+    today = datetime.now()
+    current_year = today.year
+
+    # Birthday already passed this year (should be current_year - birth_year)
+    past_date = today - timedelta(days=30)
+    past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+
+    # Birthday hasn't happened yet this year (should be current_year - birth_year - 1)
+    future_date = today + timedelta(days=30)
+    future_birthday = (
+        f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+    )
+
+    # Invalid formats to test error handling
+    invalid_birthday = "Not a date"
+    missing_year = "15 January"
+
+    # Test with various combinations
+    test_cases = [
+        # Valid birthdays that have passed this year
+        [f"{past_birthday}, Test Person"],
+        # Valid birthdays that haven't happened yet
+        [f"{future_birthday}, Test Person"],
+        # Mix of valid and invalid
+        [
+            f"{past_birthday}, Person 1",
+            f"{future_birthday}, Person 2",
+            invalid_birthday,
+        ],
+        # Empty list
+        [],
+        # List with only invalid entries
+        [invalid_birthday, missing_year],
+    ]
+
+    for birthdays in test_cases:
+        avg, min_val, max_val = utils.compute_age_metrics(birthdays)
+        if any("Test Person" in b for b in birthdays):
+            # At least one valid birthday with year
+            assert avg is not None
+            assert min_val is not None
+            assert max_val is not None
+        else:
+            # No valid birthdays
+            assert avg is None
+            assert min_val is None
+            assert max_val is None
+
+
 if __name__ == "__main__":
     unittest.main()
