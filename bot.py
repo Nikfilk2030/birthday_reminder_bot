@@ -236,19 +236,27 @@ def handle_stats(message):
         now = datetime.now()
         current_year = now.year
         for birthday in birthday_strings:
-            # Extract the date part
-            date_str = birthday.split(",")[0].strip()
+            if not birthday or not isinstance(birthday, str):
+                continue
             try:
-                # Will work only if the date contains a full year.
+                # Extract the date part safely
+                parts = birthday.split(",", 1)
+                if not parts:
+                    continue
+                date_str = parts[0].strip()
+
+                # Will work only if the date contains a full year
                 date_dt = datetime.strptime(date_str, "%d %B %Y")
-            except ValueError:
-                continue  # skip birthdays with no full date
-            # Compute age and adjust if birthday hasn't taken place yet this year.
-            birthday_this_year = date_dt.replace(year=current_year)
-            age = current_year - date_dt.year
-            if now < birthday_this_year:
-                age -= 1
-            ages.append(age)
+
+                # Compute age and adjust if birthday hasn't taken place yet this year
+                birthday_this_year = date_dt.replace(year=current_year)
+                age = current_year - date_dt.year
+                if now < birthday_this_year:
+                    age -= 1
+                ages.append(age)
+            except (ValueError, IndexError):
+                continue  # Skip birthdays with errors
+
         if ages:
             avg_age = sum(ages) / len(ages)
             min_age = min(ages)
