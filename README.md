@@ -200,3 +200,15 @@ Telegram: [@pchelka_zh](https://t.me/pchelka_zh)
 - [ ] Export/Import functionality
 - [ ] Web interface for management
 - [ ] Group birthday notifications
+
+## Stargazers
+
+[![Stargazers](https://reporoster.com/stars/Nikfilk2030/birthday_reminder_bot)](https://github.com/Nikfilk2030/birthday_reminder_bot/stargazers)
+
+## Contributions
+
+![Alt](https://repobeats.axiom.co/api/embed/63f750ca4cb7660d1bde04dc6213a6bbfc823dd2.svg "Repobeats analytics image")
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Nikfilk2030/birthday_reminder_bot&type=Date)](https://www.star-history.com/#Nikfilk2030/birthday_reminder_bot&Date)
