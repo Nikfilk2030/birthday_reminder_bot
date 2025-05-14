@@ -324,6 +324,9 @@ def handle_start(message):
     # remove /start command itself
     bot.delete_message(message.chat.id, message.message_id)
 
+    # Remove any existing keyboard
+    remove_keyboard(message)
+
     backup_ping_settings = db.select_from_backup_ping(message.chat.id)
     if backup_ping_settings.is_active:
         backup_ping_msg = f"You have an active backup ping every {backup_ping_settings.update_timedelta} minute(s).\n"
@@ -675,9 +678,11 @@ def handle_message(message):
     chat_id = message.chat.id
     user_message = message.text.strip()
 
-    if user_message == "/remove_keyboard":
+    if user_message == "/clear":
+        # Secret command to clear keyboard
         bot.delete_message(chat_id, message.message_id)
 
+        # Remove keyboard and clean up that message
         remove_keyboard(message)
         return
 
