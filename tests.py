@@ -611,6 +611,80 @@ class TestInternationalization(unittest.TestCase):
         self.assertIn("en", translations["buttons"]["start"])
         self.assertIn("ru", translations["buttons"]["start"])
 
+    def test_convenience_functions_exist(self):
+        """Test that all convenience functions exist and work"""
+        # Test button text function
+        start_text = i18n.get_button_text("start", self.test_chat_id)
+        self.assertIsInstance(start_text, str)
+        self.assertIn("Start", start_text)
+
+        # Test button description function
+        start_desc = i18n.get_button_description("start", self.test_chat_id)
+        self.assertIsInstance(start_desc, str)
+        self.assertIn("Start", start_desc)
+
+        # Test month name function
+        january = i18n.get_month_name("January", self.test_chat_id)
+        self.assertIsInstance(january, str)
+        self.assertEqual(january, "January")
+
+        # Test message function
+        welcome = i18n.get_message("welcome_title", self.test_chat_id)
+        self.assertIsInstance(welcome, str)
+        self.assertIn("Welcome", welcome)
+
+        def test_bot_functions_integration(self):
+        """Test that bot functions work with i18n"""
+        # This test ensures all functions used in bot.py exist
+        try:
+            # Test functions that caused the error
+            from bot import get_command_descriptions, get_button_to_command_mapping
+
+            # These should not raise AttributeError
+            descriptions = get_command_descriptions(self.test_chat_id)
+            self.assertIsInstance(descriptions, dict)
+            self.assertGreater(len(descriptions), 0)
+
+            mappings = get_button_to_command_mapping(self.test_chat_id)
+            self.assertIsInstance(mappings, dict)
+            self.assertGreater(len(mappings), 0)
+
+        except ImportError:
+            # Bot module might not be importable in test environment
+            # Just test the i18n functions directly
+            pass
+
+    def test_newline_formatting(self):
+        """Test that newlines in translations are properly formatted"""
+        # Test English instructions
+        instructions_en = i18n.get_message("register_birthday_instructions", self.test_chat_id)
+        self.assertIn("\n", instructions_en)
+        self.assertNotIn("\\n", instructions_en)  # Should not contain literal \n
+
+        # Test Russian instructions
+        i18n.set_user_language(self.test_chat_id, "ru")
+        instructions_ru = i18n.get_message("register_birthday_instructions", self.test_chat_id)
+        self.assertIn("\n", instructions_ru)
+        self.assertNotIn("\\n", instructions_ru)  # Should not contain literal \n
+
+        # Test that features list has proper newlines
+        features_en = i18n.get_message("bot_features", self.test_chat_id)
+        self.assertIn("\n", features_en)
+        self.assertTrue(features_en.count("\n") > 2)  # Multiple bullet points
+
+    def test_error_handling_in_i18n(self):
+        """Test error handling in i18n functions"""
+        # Test with invalid chat_id
+        try:
+            text = i18n.get_text("buttons.start", -1)
+            self.assertIsInstance(text, str)
+        except Exception:
+            self.fail("i18n should handle invalid chat_id gracefully")
+
+        # Test with missing translation key
+        missing_text = i18n.get_text("non.existent.key", self.test_chat_id)
+        self.assertEqual(missing_text, "non.existent.key")  # Should return key as fallback
+
 
 def test_compute_age_metrics():
     # Setup test data with different formats

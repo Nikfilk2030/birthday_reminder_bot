@@ -463,8 +463,11 @@ def handle_language_callback(call):
     chat_id = call.message.chat.id
 
     if i18n.set_user_language(chat_id, language_code):
-        # Delete the language selection message
-        bot.delete_message(chat_id, call.message.message_id)
+        # Try to delete the language selection message
+        try:
+            bot.delete_message(chat_id, call.message.message_id)
+        except Exception as e:
+            logging.warning(f"Could not delete language selection message: {e}")
 
         # Send confirmation message
         bot.send_message(
