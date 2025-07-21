@@ -117,8 +117,8 @@
       "ru": "У вас нет активного резервного копирования."
     },
     "contribute": {
-      "en": "*Contribute to the project:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)\nIf any issues, contact @pchelka_zh",
-      "ru": "*Внести вклад в проект:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)\nЕсли есть проблемы, обратитесь к @pchelka_zh"
+      "en": "*Contribute to the project:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)",
+      "ru": "*Внести вклад в проект:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)"
     },
     "configure_reminders": {
       "en": "Configure when you want to receive birthday reminders:",
