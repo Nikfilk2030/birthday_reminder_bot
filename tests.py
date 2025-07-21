@@ -673,7 +673,7 @@ class TestInternationalization(unittest.TestCase):
         self.assertIn("\n", features_en)
         self.assertTrue(features_en.count("\n") > 2)  # Multiple bullet points
 
-        def test_error_handling_in_i18n(self):
+    def test_error_handling_in_i18n(self):
         pass
         """Test error handling in i18n functions"""
         # Test with invalid chat_id
