@@ -18,6 +18,8 @@ Never miss a birthday again! Birthday Reminder Bot is a Telegram bot that helps 
 - 🔒 Private data storage for each user
 - 🌙 Smart notification system (only sends during daytime)
 - 🐳 Docker support for easy deployment
+- 🇬🇧🇷🇺 Bilingual support (English & Russian)
+- 🔄 Instant language switching
 
 ## 🚀 Getting Started
 
@@ -104,6 +106,22 @@ The bot includes a prestable testing environment to safely test changes before d
 ./start.sh --no-docker        # Production mode without Docker
 ./start.sh --prestable --no-docker  # Prestable mode without Docker
 ```
+
+## 🌍 Language Support
+
+The bot supports both English and Russian languages with seamless switching:
+
+### 🔄 Language Switching
+- **🇬🇧🇷🇺 Language Button**: Click the language button in the main menu
+- **Persistent Settings**: Your language preference is saved automatically
+- **Instant Switching**: Interface updates immediately without restart
+- **Complete Translation**: All buttons, messages, and notifications are localized
+
+### 🌟 Supported Languages
+- **🇬🇧 English** (Default)
+- **🇷🇺 Russian** (Русский)
+
+The bot automatically detects your preference and remembers it for future interactions.
 
 ## 💡 Usage
 
@@ -225,7 +243,18 @@ pip install black isort flake8
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔧 Recent Bug Fixes
+## 🔧 Recent Updates
+
+### 🌍 Internationalization Update (July 2025)
+
+Added complete bilingual support for Russian and English:
+
+- **🇬🇧🇷🇺 Dual Language Support**: Full Russian and English localization
+- **🔄 Dynamic Switching**: Change language instantly with flag buttons
+- **💾 Persistent Preferences**: Language choice saved automatically
+- **📱 Complete UI Translation**: All buttons, messages, and notifications
+- **📅 Localized Dates**: Month names and date formats in user's language
+- **🛡️ Robust System**: Fallbacks and error handling for missing translations
 
 ### Critical Birthday Reminder Fix (July 2025)
 
