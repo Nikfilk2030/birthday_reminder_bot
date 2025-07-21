@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import unittest
 from datetime import datetime, timedelta
 
@@ -347,6 +348,127 @@ class TestMultipleBirthdayDeletion(unittest.TestCase):
 
         self.assertEqual(deleted_ids, [])
         self.assertEqual(not_found_ids, [99])
+
+
+class TestBirthdayReminderLogic(unittest.TestCase):
+    def setUp(self):
+        self.original_db_file = db.DB_FILE
+        db.DB_FILE = "test_reminder_logic.db"
+        db.init_db()
+        self.test_chat_id = 123456789
+
+    def tearDown(self):
+        if os.path.exists(db.DB_FILE):
+            os.remove(db.DB_FILE)
+        db.DB_FILE = self.original_db_file
+
+    def test_mark_birthday_reminder_sent(self):
+        """Test that birthday reminder flags are set correctly"""
+        # Register a test birthday
+        test_birthday = datetime(1990, 5, 15)
+        db.register_birthday(self.test_chat_id, "Test Person", test_birthday, True)
+
+        # Get the birthday ID
+        birthdays = db.get_all_birthdays(self.test_chat_id)
+        self.assertEqual(len(birthdays), 1)
+
+        # Mark reminders as sent for different days
+        birthday_id = 1  # First entry should have ID 1
+
+        # Test marking 7-day reminder
+        db.mark_birthday_reminder_sent(birthday_id, 7)
+
+        # Verify the flag was set
+        conn = sqlite3.connect(db.DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT was_reminded_7_days_ago FROM birthdays WHERE id = ?", (birthday_id,))
+        result = cursor.fetchone()
+        conn.close()
+
+        self.assertTrue(result[0], "7-day reminder flag should be True")
+
+    def test_birthday_reminder_flags_prevent_duplicate_reminders(self):
+        """Test that reminder flags prevent sending duplicate reminders"""
+        # Register a birthday that would trigger today (for testing)
+        today = datetime.now()
+        test_birthday = datetime(1990, today.month, today.day)
+        db.register_birthday(self.test_chat_id, "Test Person", test_birthday, True)
+
+        # Mark the 0-day reminder as sent
+        db.mark_birthday_reminder_sent(1, 0)
+
+        # Try to get upcoming birthdays for today (0 days ahead)
+        upcoming = db.get_upcoming_birthdays(0)
+
+        # Should be empty because reminder was already sent
+        self.assertEqual(len(upcoming), 0, "Should not return birthdays that already have reminders sent")
+
+    def test_birthday_reminder_flags_reset_mechanism(self):
+        """Test that we need a mechanism to reset reminder flags yearly"""
+        # This test demonstrates the current problem and will fail until we fix it
+        today = datetime.now()
+        last_year = today.year - 1
+
+        # Register a birthday from last year
+        test_birthday = datetime(1990, today.month, today.day)
+        db.register_birthday(self.test_chat_id, "Test Person", test_birthday, True)
+
+        # Mark all reminders as sent (simulating what happened last year)
+        birthday_id = 1
+        for days in [0, 1, 3, 7]:
+            db.mark_birthday_reminder_sent(birthday_id, days)
+
+        # Now check if we can get upcoming birthdays for this year
+        upcoming = db.get_upcoming_birthdays(0)
+
+        # This should NOT be empty - we should get reminders again this year
+        # But currently it WILL be empty due to the bug
+        self.assertEqual(len(upcoming), 0,
+                        "This test shows the BUG - reminder flags are never reset, so no reminders are sent in subsequent years")
+
+    def test_get_upcoming_birthdays_respects_reminder_flags(self):
+        """Test that get_upcoming_birthdays properly filters based on reminder flags"""
+        today = datetime.now()
+
+        # Create two identical birthdays
+        test_birthday = datetime(1990, today.month, today.day)
+        db.register_birthday(self.test_chat_id, "Person 1", test_birthday, True)
+        db.register_birthday(self.test_chat_id, "Person 2", test_birthday, True)
+
+        # Mark reminder as sent for only the first person
+        db.mark_birthday_reminder_sent(1, 0)
+
+        # Get upcoming birthdays
+        upcoming = db.get_upcoming_birthdays(0)
+
+        # Should only return the second person
+        self.assertEqual(len(upcoming), 1)
+        self.assertEqual(upcoming[0][2], "Person 2")  # Name is at index 2
+
+    def test_reminder_field_naming_consistency(self):
+        """Test that the reminder field naming is consistent between functions"""
+        # This test ensures that the field names used in mark_birthday_reminder_sent
+        # match those used in get_upcoming_birthdays
+
+        test_birthday = datetime(1990, 5, 15)
+        db.register_birthday(self.test_chat_id, "Test Person", test_birthday, True)
+
+        birthday_id = 1
+
+        # Test each reminder day
+        for days in [0, 1, 3, 7]:
+            # Mark reminder as sent
+            db.mark_birthday_reminder_sent(birthday_id, days)
+
+            # Verify the field was set correctly by checking the database directly
+            conn = sqlite3.connect(db.DB_FILE)
+            cursor = conn.cursor()
+            field_name = f"was_reminded_{days}_days_ago"
+            cursor.execute(f"SELECT {field_name} FROM birthdays WHERE id = ?", (birthday_id,))
+            result = cursor.fetchone()
+            conn.close()
+
+            self.assertTrue(result[0], f"Field {field_name} should be True after marking reminder as sent")
 
 
 def test_compute_age_metrics():

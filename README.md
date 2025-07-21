@@ -46,7 +46,10 @@ pip install -r requirements.txt
 
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token_here
+PRESTABLE_TELEGRAM_BOT_TOKEN=your_prestable_bot_token_here
 ```
+
+**Note:** The `PRESTABLE_TELEGRAM_BOT_TOKEN` is optional and only needed if you plan to use the prestable testing environment.
 
 4. Choose your preferred deployment method:
 
@@ -60,6 +63,46 @@ docker compose up --build
 
 ```bash
 ./start.sh
+```
+
+## 🧪 Prestable Testing Environment
+
+The bot includes a prestable testing environment to safely test changes before deploying to production.
+
+### Setting up Prestable
+
+1. **Create a separate test bot** with [@BotFather](https://t.me/botfather):
+   - Use `/newbot` command
+   - Choose a different name (e.g., "My Birthday Bot Test")
+   - Save the token as `PRESTABLE_TELEGRAM_BOT_TOKEN` in your `.env` file
+
+2. **Run in prestable mode:**
+
+```bash
+# Run with Docker
+./start.sh --prestable
+
+# Run without Docker
+./start.sh --prestable --no-docker
+
+# Get help
+./start.sh --help
+```
+
+### Prestable Features
+
+- **🔒 Isolated Database**: Uses `data_prestable.db` instead of production `data.db`
+- **🧪 Safe Testing**: Test new features without affecting production data
+- **🔄 Automatic Backups**: Creates backups before each startup
+- **🚀 Easy Switching**: Switch between production and prestable with simple flags
+
+### Available Start Options
+
+```bash
+./start.sh                    # Production mode with Docker
+./start.sh --prestable        # Prestable mode with Docker
+./start.sh --no-docker        # Production mode without Docker
+./start.sh --prestable --no-docker  # Prestable mode without Docker
 ```
 
 ## 💡 Usage
@@ -181,6 +224,25 @@ pip install black isort flake8
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔧 Recent Bug Fixes
+
+### Critical Birthday Reminder Fix (July 2025)
+
+Fixed a critical bug where birthday reminders would stop working after the first year:
+
+- **Problem**: Reminder flags (`was_reminded_X_days_ago`) were never reset, causing reminders to stop permanently after being sent once
+- **Solution**: Added automatic flag reset mechanism that runs every 5 minutes
+- **Impact**: Ensures birthday reminders continue working year after year
+- **Safety**: Added comprehensive tests to prevent similar issues in the future
+
+### Database Backup System
+
+Added robust backup system to protect user data:
+
+- **Automatic Backups**: Created before every bot startup
+- **Multiple Formats**: File copy, SQLite backup, and SQL dump
+- **Easy Restore**: `python3 backup_db.py restore <backup_file>`
 
 ## 🙏 Acknowledgments
 

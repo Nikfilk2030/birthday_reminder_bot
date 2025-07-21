@@ -190,6 +190,10 @@ backup*/
 *.dump
 *.backup
 
+# Git backups (should never be committed)
+.git_backup*/
+.git_backup_*/
+
 # Log files (may contain personal information)
 *.log
 bot.log*

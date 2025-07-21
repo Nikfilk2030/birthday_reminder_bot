@@ -24,10 +24,22 @@ logging.basicConfig(
 )
 
 load_dotenv()
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not TOKEN:
-    logging.critical("TELEGRAM_BOT_TOKEN is not set in the .env file!")
-    raise ValueError("TELEGRAM_BOT_TOKEN is not set in the .env file!")
+
+# Check if prestable mode is enabled
+PRESTABLE_MODE = os.getenv("PRESTABLE_MODE", "false").lower() == "true"
+
+if PRESTABLE_MODE:
+    TOKEN = os.getenv("PRESTABLE_TELEGRAM_BOT_TOKEN")
+    if not TOKEN:
+        logging.critical("PRESTABLE_TELEGRAM_BOT_TOKEN is not set in the .env file!")
+        raise ValueError("PRESTABLE_TELEGRAM_BOT_TOKEN is not set in the .env file!")
+    logging.info("🧪 Running in PRESTABLE mode")
+else:
+    TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not TOKEN:
+        logging.critical("TELEGRAM_BOT_TOKEN is not set in the .env file!")
+        raise ValueError("TELEGRAM_BOT_TOKEN is not set in the .env file!")
+    logging.info("🚀 Running in PRODUCTION mode")
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -481,6 +493,9 @@ def process_birthday_pings():
             continue
 
         try:
+            # Reset reminder flags for birthdays that have passed
+            db.reset_birthday_reminder_flags()
+
             for days in REMINDED_DAYS:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
 

@@ -1,10 +1,17 @@
 import logging
+import os
 import sqlite3
 from datetime import datetime, timedelta
 
 import utils
 
-DB_FILE = "data.db"
+# Database file selection based on environment
+DB_FILE = os.getenv("DB_FILE", "data.db")
+PRESTABLE_MODE = os.getenv("PRESTABLE_MODE", "false").lower() == "true"
+
+# Use separate database for prestable
+if PRESTABLE_MODE:
+    DB_FILE = "data_prestable.db"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -292,7 +299,7 @@ def unregister_backup_ping(chat_id: int) -> None:
         conn.close()
     except sqlite3.Error as e:
         logging.error(f"Error unregistering backup ping: {e}")
-        utils.log_fexception(e)
+        utils.log_exception(e)
 
 
 def select_from_backup_ping(chat_id: int) -> TBackupPingSettings:
@@ -365,25 +372,79 @@ def get_upcoming_birthdays(days_ahead: int) -> list[tuple]:
         utils.log_exception(e)
 
 
-def mark_birthday_reminder_sent(birthday_id: int, days_ago: int) -> None:
+def mark_birthday_reminder_sent(birthday_id: int, days_until: int) -> None:
+    """
+    Mark that a birthday reminder has been sent for a specific number of days.
+
+    Args:
+        birthday_id: The ID of the birthday record
+        days_until: Number of days until the birthday (0, 1, 3, or 7)
+    """
+    try:
+        # Validate input to prevent SQL injection
+        if days_until not in [0, 1, 3, 7]:
+            logging.error(f"Invalid days_until value: {days_until}. Must be 0, 1, 3, or 7.")
+            return
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        # Use proper parameterized query for safety
+        if days_until == 0:
+            cursor.execute("UPDATE birthdays SET was_reminded_0_days_ago = TRUE WHERE id = ?", (birthday_id,))
+        elif days_until == 1:
+            cursor.execute("UPDATE birthdays SET was_reminded_1_days_ago = TRUE WHERE id = ?", (birthday_id,))
+        elif days_until == 3:
+            cursor.execute("UPDATE birthdays SET was_reminded_3_days_ago = TRUE WHERE id = ?", (birthday_id,))
+        elif days_until == 7:
+            cursor.execute("UPDATE birthdays SET was_reminded_7_days_ago = TRUE WHERE id = ?", (birthday_id,))
+
+        conn.commit()
+        conn.close()
+
+        logging.debug(f"Marked {days_until}-day reminder as sent for birthday ID {birthday_id}")
+
+    except sqlite3.Error as e:
+        logging.error(f"Error marking reminder as sent: {e}")
+        utils.log_exception(e)
+
+
+def reset_birthday_reminder_flags() -> None:
+    """
+    Reset reminder flags for birthdays that have passed more than 7 days ago.
+    This ensures that reminders will be sent again next year.
+    """
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
 
-        reminder_field = f"was_reminded_{days_ago}_days_ago"
-        cursor.execute(
-            f"""
+        # Reset flags for birthdays that are more than 7 days in the past
+        # This handles both same year (already passed) and different year cases
+        query = """
             UPDATE birthdays
-            SET {reminder_field} = TRUE
-            WHERE id = ?
-            """,
-            (birthday_id,),
-        )
+            SET was_reminded_0_days_ago = FALSE,
+                was_reminded_1_days_ago = FALSE,
+                was_reminded_3_days_ago = FALSE,
+                was_reminded_7_days_ago = FALSE
+            WHERE (
+                -- Case 1: Birthday this year has already passed by more than 7 days
+                (strftime('%m-%d', birthday) < strftime('%m-%d', date('now', '-7 days')))
+                OR
+                -- Case 2: We're in a new year and birthday hasn't happened yet
+                (strftime('%m-%d', birthday) > strftime('%m-%d', 'now'))
+            )
+        """
 
+        cursor.execute(query)
+        rows_affected = cursor.rowcount
         conn.commit()
         conn.close()
+
+        if rows_affected > 0:
+            logging.info(f"Reset reminder flags for {rows_affected} birthdays")
+
     except sqlite3.Error as e:
-        logging.error(f"Error marking reminder as sent: {e}")
+        logging.error(f"Error resetting birthday reminder flags: {e}")
         utils.log_exception(e)
 
 
