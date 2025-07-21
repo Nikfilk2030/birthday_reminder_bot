@@ -170,5 +170,48 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# database:
+# ==========================================
+# 🔒 PERSONAL DATA PROTECTION 🔒
+# ==========================================
+# NEVER commit personal user data to public repositories!
+
+# Database files (contain personal birthday data)
 *.db
+data.db
+data_prestable.db
+data_*.db
+**/data.db
+**/data_prestable.db
+
+# Database backups and dumps (contain personal data)
+backups/
+backup*/
+*.sql
+*.dump
+*.backup
+
+# Log files (may contain personal information)
+*.log
+bot.log*
+logs/
+
+# Environment files (contain API tokens)
+.env*
+!.env.example
+
+# Test databases
+test_*.db
+*_test.db
+
+# Any personal data files
+birthdays
+personal_data/
+user_data/
+
+# Temporary files that might contain data
+*.tmp
+*.temp
+temp_*
+
+# Original gitignore database section (keeping for compatibility)
+# database:
