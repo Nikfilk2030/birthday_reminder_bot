@@ -673,7 +673,7 @@ class TestInternationalization(unittest.TestCase):
         self.assertIn("\n", features_en)
         self.assertTrue(features_en.count("\n") > 2)  # Multiple bullet points
 
-    def test_error_handling_in_i18n(self):
+        def test_error_handling_in_i18n(self):
         """Test error handling in i18n functions"""
         # Test with invalid chat_id
         try:
@@ -685,6 +685,78 @@ class TestInternationalization(unittest.TestCase):
         # Test with missing translation key
         missing_text = i18n.get_text("non.existent.key", self.test_chat_id)
         self.assertEqual(missing_text, "non.existent.key")  # Should return key as fallback
+
+    def test_markdown_safety(self):
+        """Test that translations don't break Telegram Markdown parsing"""
+        # Test that common problematic patterns are avoided
+        problematic_patterns = ["@username", "@@", "*single_asterisk"]
+
+        # Check all messages for problematic patterns
+        all_messages = [
+            i18n.get_message("welcome_title", self.test_chat_id),
+            i18n.get_message("contribute", self.test_chat_id),
+            i18n.get_message("register_birthday_instructions", self.test_chat_id),
+        ]
+
+        for message in all_messages:
+            # Check for unmatched asterisks (should be even count)
+            asterisk_count = message.count('*')
+            self.assertEqual(asterisk_count % 2, 0, f"Unmatched asterisks in: {message[:50]}...")
+
+            # Check for problematic @ patterns
+            self.assertNotIn("@", message, f"@ symbol found in message: {message[:50]}...")
+
+            # Check balanced brackets
+            open_brackets = message.count('[')
+            close_brackets = message.count(']')
+            self.assertEqual(open_brackets, close_brackets, f"Unbalanced brackets in: {message[:50]}...")
+
+    def test_welcome_message_length(self):
+        """Test that welcome message doesn't exceed Telegram limits"""
+        # Reconstruct welcome message like in bot
+        backup_ping_msg = i18n.get_message('backup_ping_inactive', self.test_chat_id) + '\n'
+
+        # Create commands list (simplified)
+        commands_msg = "Sample commands list"
+
+        welcome_message = f"""{i18n.get_message('welcome_title', self.test_chat_id)}
+
+{i18n.get_message('welcome_subtitle', self.test_chat_id)}
+
+{i18n.get_message('what_can_bot_do', self.test_chat_id)}
+{i18n.get_message('bot_features', self.test_chat_id)}
+
+{i18n.get_message('how_to_use', self.test_chat_id)}
+{i18n.get_message('how_to_use_steps', self.test_chat_id)}
+
+{i18n.get_message('available_commands', self.test_chat_id)}
+{commands_msg}
+
+{backup_ping_msg}{i18n.get_message('contribute', self.test_chat_id)}
+"""
+
+        # Telegram message limit is 4096 characters
+        self.assertLess(len(welcome_message), 4096, "Welcome message too long for Telegram")
+
+        # Also test Russian version
+        i18n.set_user_language(self.test_chat_id, "ru")
+        welcome_message_ru = f"""{i18n.get_message('welcome_title', self.test_chat_id)}
+
+{i18n.get_message('welcome_subtitle', self.test_chat_id)}
+
+{i18n.get_message('what_can_bot_do', self.test_chat_id)}
+{i18n.get_message('bot_features', self.test_chat_id)}
+
+{i18n.get_message('how_to_use', self.test_chat_id)}
+{i18n.get_message('how_to_use_steps', self.test_chat_id)}
+
+{i18n.get_message('available_commands', self.test_chat_id)}
+{commands_msg}
+
+{backup_ping_msg}{i18n.get_message('contribute', self.test_chat_id)}
+"""
+
+        self.assertLess(len(welcome_message_ru), 4096, "Russian welcome message too long for Telegram")
 
 
 def test_compute_age_metrics():
