@@ -506,7 +506,7 @@ def get_user_language(chat_id: int) -> str:
 
         cursor.execute(
             "SELECT language_code FROM user_language_settings WHERE chat_id = ?",
-            (chat_id,)
+            (chat_id,),
         )
         result = cursor.fetchone()
         conn.close()
@@ -532,7 +532,7 @@ def set_user_language(chat_id: int, language_code: str) -> None:
                 language_code = ?,
                 updated_at = CURRENT_TIMESTAMP
             """,
-            (chat_id, language_code, language_code)
+            (chat_id, language_code, language_code),
         )
 
         conn.commit()

@@ -12,8 +12,8 @@ from telebot.types import (InlineKeyboardButton, InlineKeyboardMarkup,
                            ReplyKeyboardRemove)
 
 import db
-import utils
 import i18n
+import utils
 
 logging.basicConfig(
     level=logging.INFO,
@@ -107,14 +107,30 @@ def get_button_to_command_mapping(chat_id: int) -> dict:
 def get_command_descriptions(chat_id: int) -> dict:
     """Get command descriptions for specific user's language"""
     return {
-        i18n.get_button_text("start", chat_id): i18n.get_button_description("start", chat_id),
-        i18n.get_button_text("register_birthday", chat_id): i18n.get_button_description("register_birthday", chat_id),
-        i18n.get_button_text("delete_birthday", chat_id): i18n.get_button_description("delete_birthday", chat_id),
-        i18n.get_button_text("backup", chat_id): i18n.get_button_description("backup", chat_id),
-        i18n.get_button_text("register_backup", chat_id): i18n.get_button_description("register_backup", chat_id),
-        i18n.get_button_text("unregister_backup", chat_id): i18n.get_button_description("unregister_backup", chat_id),
-        i18n.get_button_text("share", chat_id): i18n.get_button_description("share", chat_id),
-        i18n.get_button_text("stats", chat_id): i18n.get_button_description("stats", chat_id),
+        i18n.get_button_text("start", chat_id): i18n.get_button_description(
+            "start", chat_id
+        ),
+        i18n.get_button_text("register_birthday", chat_id): i18n.get_button_description(
+            "register_birthday", chat_id
+        ),
+        i18n.get_button_text("delete_birthday", chat_id): i18n.get_button_description(
+            "delete_birthday", chat_id
+        ),
+        i18n.get_button_text("backup", chat_id): i18n.get_button_description(
+            "backup", chat_id
+        ),
+        i18n.get_button_text("register_backup", chat_id): i18n.get_button_description(
+            "register_backup", chat_id
+        ),
+        i18n.get_button_text("unregister_backup", chat_id): i18n.get_button_description(
+            "unregister_backup", chat_id
+        ),
+        i18n.get_button_text("share", chat_id): i18n.get_button_description(
+            "share", chat_id
+        ),
+        i18n.get_button_text("stats", chat_id): i18n.get_button_description(
+            "stats", chat_id
+        ),
     }
 
 
@@ -140,40 +156,35 @@ def get_reply_markup(message) -> InlineKeyboardMarkup | None:
     markup = InlineKeyboardMarkup()
     buttons = [
         InlineKeyboardButton(
-            i18n.get_button_text("start", chat_id),
-            callback_data="start"
+            i18n.get_button_text("start", chat_id), callback_data="start"
         ),
         InlineKeyboardButton(
-            i18n.get_button_text("backup", chat_id),
-            callback_data="backup"
+            i18n.get_button_text("backup", chat_id), callback_data="backup"
         ),
         InlineKeyboardButton(
             i18n.get_button_text("register_birthday", chat_id),
-            callback_data="register_birthday"
+            callback_data="register_birthday",
         ),
         InlineKeyboardButton(
             i18n.get_button_text("register_backup", chat_id),
-            callback_data="register_backup"
+            callback_data="register_backup",
         ),
         InlineKeyboardButton(
             i18n.get_button_text("delete_birthday", chat_id),
-            callback_data="delete_birthday"
+            callback_data="delete_birthday",
         ),
         InlineKeyboardButton(
             i18n.get_button_text("unregister_backup", chat_id),
-            callback_data="unregister_backup"
+            callback_data="unregister_backup",
         ),
         InlineKeyboardButton(
-            i18n.get_button_text("share", chat_id),
-            callback_data="share"
+            i18n.get_button_text("share", chat_id), callback_data="share"
         ),
         InlineKeyboardButton(
-            i18n.get_button_text("stats", chat_id),
-            callback_data="stats"
+            i18n.get_button_text("stats", chat_id), callback_data="stats"
         ),
         InlineKeyboardButton(
-            i18n.get_button_text("language", chat_id),
-            callback_data="language"
+            i18n.get_button_text("language", chat_id), callback_data="language"
         ),
     ]
     for i in range(0, len(buttons), 2):
@@ -382,7 +393,14 @@ def handle_start(message):
 
     backup_ping_settings = db.select_from_backup_ping(chat_id)
     if backup_ping_settings.is_active:
-        backup_ping_msg = i18n.get_message("backup_ping_active", chat_id, interval=backup_ping_settings.update_timedelta) + "\n"
+        backup_ping_msg = (
+            i18n.get_message(
+                "backup_ping_active",
+                chat_id,
+                interval=backup_ping_settings.update_timedelta,
+            )
+            + "\n"
+        )
     else:
         backup_ping_msg = i18n.get_message("backup_ping_inactive", chat_id) + "\n"
 
@@ -448,7 +466,9 @@ def handle_reminder_callback(call):
         reply_markup=get_reminder_settings_keyboard(chat_id),
     )
 
-    status = i18n.get_message("reminder_enabled" if days in current_settings else "reminder_disabled", chat_id)
+    status = i18n.get_message(
+        "reminder_enabled" if days in current_settings else "reminder_disabled", chat_id
+    )
     bot.answer_callback_query(
         call.id,
         f"{status} {days}{i18n.get_message('reminder_days_suffix', chat_id)}",
@@ -463,12 +483,6 @@ def handle_language_callback(call):
     chat_id = call.message.chat.id
 
     if i18n.set_user_language(chat_id, language_code):
-        # Try to delete the language selection message
-        try:
-            bot.delete_message(chat_id, call.message.message_id)
-        except Exception as e:
-            logging.warning(f"Could not delete language selection message: {e}")
-
         # Send confirmation message
         bot.send_message(
             chat_id,
@@ -587,9 +601,17 @@ def process_birthday_pings():
 
                         if days_until == 0:
                             bot.send_message(chat_id, "🎂")
-                            reminder_text = i18n.get_message("today_birthday", chat_id, name=name, age_text=age_text)
+                            reminder_text = i18n.get_message(
+                                "today_birthday", chat_id, name=name, age_text=age_text
+                            )
                         else:
-                            reminder_text = i18n.get_message("upcoming_birthday", chat_id, days=days_until, name=name, age_text=age_text)
+                            reminder_text = i18n.get_message(
+                                "upcoming_birthday",
+                                chat_id,
+                                days=days_until,
+                                name=name,
+                                age_text=age_text,
+                            )
 
                         bot.send_message(chat_id, reminder_text)
 
@@ -753,7 +775,9 @@ def handle_callback_query(call):
                 parse_mode="Markdown",
             )
         else:
-            bot.answer_callback_query(call.id, i18n.get_message("unknown_command", chat_id))
+            bot.answer_callback_query(
+                call.id, i18n.get_message("unknown_command", chat_id)
+            )
     else:
         bot.answer_callback_query(call.id, i18n.get_message("invalid_action", chat_id))
 
@@ -839,7 +863,9 @@ def handle_message(message):
 
                 bot.send_message(
                     chat_id,
-                    i18n.get_message("backup_registered", chat_id, interval=interval_in_minutes),
+                    i18n.get_message(
+                        "backup_registered", chat_id, interval=interval_in_minutes
+                    ),
                     parse_mode="Markdown",
                 )
 
@@ -880,14 +906,22 @@ def handle_message(message):
                 if deleted_ids:
                     bot.send_message(
                         chat_id,
-                        i18n.get_message("birthdays_deleted", chat_id, ids=', '.join(map(str, deleted_ids))),
+                        i18n.get_message(
+                            "birthdays_deleted",
+                            chat_id,
+                            ids=", ".join(map(str, deleted_ids)),
+                        ),
                         parse_mode="Markdown",
                     )
 
                 if not_found_ids:
                     bot.send_message(
                         chat_id,
-                        i18n.get_message("birthdays_not_found", chat_id, ids=', '.join(map(str, not_found_ids))),
+                        i18n.get_message(
+                            "birthdays_not_found",
+                            chat_id,
+                            ids=", ".join(map(str, not_found_ids)),
+                        ),
                         parse_mode="Markdown",
                     )
                     logging.warning(
@@ -916,7 +950,9 @@ def handle_message(message):
 
         case TUserState.AwaitingBirthday:
             try:
-                success, error_message = utils.validate_birthday_input(user_message, chat_id)
+                success, error_message = utils.validate_birthday_input(
+                    user_message, chat_id
+                )
                 if not success:
                     err_msg = bot.send_message(
                         chat_id,

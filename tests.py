@@ -4,8 +4,8 @@ import unittest
 from datetime import datetime, timedelta
 
 import db
-import utils
 import i18n
+import utils
 from utils import (get_time, is_timestamp_valid, parse_date,
                    validate_birthday_input)
 
@@ -564,11 +564,15 @@ class TestInternationalization(unittest.TestCase):
         """Test message formatting with variables"""
         # Test backup message with interval formatting
         i18n.set_user_language(self.test_chat_id, "en")
-        backup_msg_en = i18n.get_message("backup_ping_active", self.test_chat_id, interval=60)
+        backup_msg_en = i18n.get_message(
+            "backup_ping_active", self.test_chat_id, interval=60
+        )
         self.assertIn("60", backup_msg_en)
 
         i18n.set_user_language(self.test_chat_id, "ru")
-        backup_msg_ru = i18n.get_message("backup_ping_active", self.test_chat_id, interval=60)
+        backup_msg_ru = i18n.get_message(
+            "backup_ping_active", self.test_chat_id, interval=60
+        )
         self.assertIn("60", backup_msg_ru)
 
     def test_month_names(self):
@@ -650,7 +654,8 @@ class TestInternationalization(unittest.TestCase):
         # This test ensures all functions used in bot.py exist
         try:
             # Test functions that caused the error
-            from bot import get_command_descriptions, get_button_to_command_mapping
+            from bot import (get_button_to_command_mapping,
+                             get_command_descriptions)
 
             # These should not raise AttributeError
             descriptions = get_command_descriptions(self.test_chat_id)
@@ -669,13 +674,17 @@ class TestInternationalization(unittest.TestCase):
     def test_newline_formatting(self):
         """Test that newlines in translations are properly formatted"""
         # Test English instructions
-        instructions_en = i18n.get_message("register_birthday_instructions", self.test_chat_id)
+        instructions_en = i18n.get_message(
+            "register_birthday_instructions", self.test_chat_id
+        )
         self.assertIn("\n", instructions_en)
         self.assertNotIn("\\n", instructions_en)  # Should not contain literal \n
 
         # Test Russian instructions
         i18n.set_user_language(self.test_chat_id, "ru")
-        instructions_ru = i18n.get_message("register_birthday_instructions", self.test_chat_id)
+        instructions_ru = i18n.get_message(
+            "register_birthday_instructions", self.test_chat_id
+        )
         self.assertIn("\n", instructions_ru)
         self.assertNotIn("\\n", instructions_ru)  # Should not contain literal \n
 
@@ -696,13 +705,12 @@ class TestInternationalization(unittest.TestCase):
 
         # Test with missing translation key
         missing_text = i18n.get_text("non.existent.key", self.test_chat_id)
-        self.assertEqual(missing_text, "non.existent.key")  # Should return key as fallback
+        self.assertEqual(
+            missing_text, "non.existent.key"
+        )  # Should return key as fallback
 
     def test_markdown_safety(self):
         """Test that translations don't break Telegram Markdown parsing"""
-        # Test that common problematic patterns are avoided
-        problematic_patterns = ["@username", "@@", "*single_asterisk"]
-
         # Check all messages for problematic patterns
         all_messages = [
             i18n.get_message("welcome_title", self.test_chat_id),
@@ -712,21 +720,31 @@ class TestInternationalization(unittest.TestCase):
 
         for message in all_messages:
             # Check for unmatched asterisks (should be even count)
-            asterisk_count = message.count('*')
-            self.assertEqual(asterisk_count % 2, 0, f"Unmatched asterisks in: {message[:50]}...")
+            asterisk_count = message.count("*")
+            self.assertEqual(
+                asterisk_count % 2, 0, f"Unmatched asterisks in: {message[:50]}..."
+            )
 
             # Check for problematic @ patterns
-            self.assertNotIn("@", message, f"@ symbol found in message: {message[:50]}...")
+            self.assertNotIn(
+                "@", message, f"@ symbol found in message: {message[:50]}..."
+            )
 
             # Check balanced brackets
-            open_brackets = message.count('[')
-            close_brackets = message.count(']')
-            self.assertEqual(open_brackets, close_brackets, f"Unbalanced brackets in: {message[:50]}...")
+            open_brackets = message.count("[")
+            close_brackets = message.count("]")
+            self.assertEqual(
+                open_brackets,
+                close_brackets,
+                f"Unbalanced brackets in: {message[:50]}...",
+            )
 
     def test_welcome_message_length(self):
         """Test that welcome message doesn't exceed Telegram limits"""
         # Reconstruct welcome message like in bot
-        backup_ping_msg = i18n.get_message('backup_ping_inactive', self.test_chat_id) + '\n'
+        backup_ping_msg = (
+            i18n.get_message("backup_ping_inactive", self.test_chat_id) + "\n"
+        )
 
         # Create commands list (simplified)
         commands_msg = "Sample commands list"
@@ -748,7 +766,9 @@ class TestInternationalization(unittest.TestCase):
 """
 
         # Telegram message limit is 4096 characters
-        self.assertLess(len(welcome_message), 4096, "Welcome message too long for Telegram")
+        self.assertLess(
+            len(welcome_message), 4096, "Welcome message too long for Telegram"
+        )
 
         # Also test Russian version
         i18n.set_user_language(self.test_chat_id, "ru")
@@ -768,33 +788,47 @@ class TestInternationalization(unittest.TestCase):
 {backup_ping_msg}{i18n.get_message('contribute', self.test_chat_id)}
 """
 
-        self.assertLess(len(welcome_message_ru), 4096, "Russian welcome message too long for Telegram")
+        self.assertLess(
+            len(welcome_message_ru),
+            4096,
+            "Russian welcome message too long for Telegram",
+        )
 
         # Test incomplete input in English (default)
+        i18n.set_user_language(self.test_chat_id, "en")
         message_incomplete = "John Doe"
-        success, error_message = validate_birthday_input(message_incomplete, self.test_chat_id)
+        success, error_message = validate_birthday_input(
+            message_incomplete, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("incomplete", error_message.lower())
 
         # Test Russian translation
         i18n.set_user_language(self.test_chat_id, "ru")
-        success, error_message_ru = validate_birthday_input(message_incomplete, self.test_chat_id)
+        success, error_message_ru = validate_birthday_input(
+            message_incomplete, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("неполный", error_message_ru.lower())
 
         # Test future date error in Russian
         future_message = "John Doe\n1.1.2050"
-        success, error_message_ru = validate_birthday_input(future_message, self.test_chat_id)
+        success, error_message_ru = validate_birthday_input(
+            future_message, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("будущем", error_message_ru.lower())
 
         # Test date parse error in Russian
         invalid_message = "John Doe\n32.13.2000"
-        success, error_message_ru = validate_birthday_input(invalid_message, self.test_chat_id)
+        success, error_message_ru = validate_birthday_input(
+            invalid_message, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("разобрать", error_message_ru.lower())
 
         # Test backward compatibility (no chat_id)
+        i18n.set_user_language(self.test_chat_id, "en")
         success, error_message_en = validate_birthday_input(message_incomplete)
         self.assertFalse(success)
         self.assertIn("incomplete", error_message_en.lower())
@@ -805,25 +839,33 @@ class TestInternationalization(unittest.TestCase):
 
         # Test incomplete input in English (default)
         message_incomplete = "John Doe"
-        success, error_message = validate_birthday_input(message_incomplete, self.test_chat_id)
+        success, error_message = validate_birthday_input(
+            message_incomplete, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("incomplete", error_message.lower())
 
         # Test Russian translation
         i18n.set_user_language(self.test_chat_id, "ru")
-        success, error_message_ru = validate_birthday_input(message_incomplete, self.test_chat_id)
+        success, error_message_ru = validate_birthday_input(
+            message_incomplete, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("неполный", error_message_ru.lower())
 
         # Test future date error in Russian
         future_message = "John Doe\n1.1.2050"
-        success, error_message_ru = validate_birthday_input(future_message, self.test_chat_id)
+        success, error_message_ru = validate_birthday_input(
+            future_message, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("будущем", error_message_ru.lower())
 
         # Test date parse error in Russian
         invalid_message = "John Doe\n32.13.2000"
-        success, error_message_ru = validate_birthday_input(invalid_message, self.test_chat_id)
+        success, error_message_ru = validate_birthday_input(
+            invalid_message, self.test_chat_id
+        )
         self.assertFalse(success)
         self.assertIn("разобрать", error_message_ru.lower())
 

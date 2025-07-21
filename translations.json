@@ -118,7 +118,7 @@
     },
     "contribute": {
       "en": "*Contribute to the project:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)",
-      "ru": "*Внести вклад в проект:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)"
+      "ru": "*Внести вклад:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)"
     },
     "configure_reminders": {
       "en": "Configure when you want to receive birthday reminders:",
@@ -274,7 +274,7 @@
     },
     "days": {
       "en": "days",
-      "ru": "дней"
+      "ru": "день/дней"
     },
     "input_incomplete": {
       "en": "It seems like your input is incomplete. Please ensure each name is followed by a date on a new line.",

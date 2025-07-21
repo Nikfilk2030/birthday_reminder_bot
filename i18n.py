@@ -5,8 +5,8 @@ Handles translations and language switching
 
 import json
 import logging
-from typing import Dict, Any
 from pathlib import Path
+from typing import Any, Dict
 
 import db
 
@@ -26,7 +26,7 @@ class I18n:
         try:
             translations_path = Path(self.translations_file)
             if translations_path.exists():
-                with open(translations_path, 'r', encoding='utf-8') as f:
+                with open(translations_path, "r", encoding="utf-8") as f:
                     self.translations = json.load(f)
                 logging.info(f"Loaded translations from {self.translations_file}")
             else:
@@ -79,7 +79,7 @@ class I18n:
         """Internal method to get text by language"""
         try:
             # Navigate through nested dictionary using dot notation
-            parts = key.split('.')
+            parts = key.split(".")
             current = self.translations
 
             for part in parts:
@@ -96,7 +96,9 @@ class I18n:
             elif isinstance(current, dict) and self.default_language in current:
                 # Fallback to default language
                 text = current[self.default_language]
-                logging.warning(f"Translation for '{key}' not found in '{language}', using '{self.default_language}'")
+                logging.warning(
+                    f"Translation for '{key}' not found in '{language}', using '{self.default_language}'"
+                )
             else:
                 # No translation found
                 logging.warning(f"No translation found for '{key}' in any language")
@@ -164,3 +166,13 @@ def get_message(message_key: str, chat_id: int, **kwargs) -> str:
 def get_button_text(button_key: str, chat_id: int) -> str:
     """Convenience function to get translated button text"""
     return i18n.get_button_text(button_key, chat_id)
+
+
+def get_button_description(button_key: str, chat_id: int) -> str:
+    """Convenience function to get translated button description"""
+    return i18n.get_button_description(button_key, chat_id)
+
+
+def get_month_name(month_name: str, chat_id: int) -> str:
+    """Convenience function to get translated month name"""
+    return i18n.get_month_name(month_name, chat_id)

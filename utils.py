@@ -4,10 +4,13 @@ import re
 from datetime import datetime, timedelta
 from typing import List, Union
 
+
 # Delayed import to avoid circular dependencies
 def get_i18n():
     import i18n
+
     return i18n
+
 
 DEFAULT_BD_YEAR = 1900
 
@@ -108,7 +111,9 @@ def validate_birthday_input(message: str, chat_id: int = None) -> tuple[bool, st
                     if year > datetime.now().year:
                         if chat_id is not None:
                             i18n = get_i18n()
-                            error_msg = i18n.get_message("birthday_in_future", chat_id, date=date_str)
+                            error_msg = i18n.get_message(
+                                "birthday_in_future", chat_id, date=date_str
+                            )
                         else:
                             error_msg = (
                                 f"Birthday '{date_str}' cannot be in the future. "
@@ -119,7 +124,9 @@ def validate_birthday_input(message: str, chat_id: int = None) -> tuple[bool, st
                     pass
             if chat_id is not None:
                 i18n = get_i18n()
-                error_msg = i18n.get_message("date_parse_error", chat_id, date=date_str, line=i + 2)
+                error_msg = i18n.get_message(
+                    "date_parse_error", chat_id, date=date_str, line=i + 2
+                )
             else:
                 error_msg = (
                     f"I couldn't parse the date '{date_str}' on line {i + 2}. "
