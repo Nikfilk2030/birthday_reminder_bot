@@ -114,26 +114,29 @@ class TestParseDate(unittest.TestCase):
 
 
 class TestValidateBirthdayInput(unittest.TestCase):
+    def setUp(self):
+        self.test_chat_id = 123456789
+
     def test_incomplete_input(self):
         message = "John Doe\n15.05.1990\nJane Smith"
-        success, error_message = validate_birthday_input(message)
+        success, error_message = validate_birthday_input(message, self.test_chat_id)
         self.assertFalse(success)
-        self.assertIn("incomplete", error_message)
+        self.assertIn("incomplete", error_message.lower())
 
     def test_empty_name(self):
         message = "\n15.05.1990"
-        success, error_message = validate_birthday_input(message)
+        success, error_message = validate_birthday_input(message, self.test_chat_id)
         self.assertFalse(success)
 
     def test_invalid_date_format(self):
         message = "John Doe\n32.13.2000"
-        success, error_message = validate_birthday_input(message)
+        success, error_message = validate_birthday_input(message, self.test_chat_id)
         self.assertFalse(success)
-        self.assertIn("couldn't parse the date '32.13.2000'", error_message)
+        self.assertIn("parse", error_message.lower())
 
     def test_valid_input(self):
         message = "John Doe\n15.05.1990\nJane Smith\n20.06.1985"
-        success, error_message = validate_birthday_input(message)
+        success, error_message = validate_birthday_input(message, self.test_chat_id)
         self.assertTrue(success)
         self.assertEqual(error_message, "")
 
@@ -758,6 +761,39 @@ class TestInternationalization(unittest.TestCase):
 """
 
         self.assertLess(len(welcome_message_ru), 4096, "Russian welcome message too long for Telegram")
+
+    def test_utils_translations(self):
+        """Test that utils functions use correct translations"""
+        from utils import validate_birthday_input
+
+        # Test incomplete input in English (default)
+        message_incomplete = "John Doe"
+        success, error_message = validate_birthday_input(message_incomplete, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("incomplete", error_message.lower())
+
+        # Test Russian translation
+        i18n.set_user_language(self.test_chat_id, "ru")
+        success, error_message_ru = validate_birthday_input(message_incomplete, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("неполный", error_message_ru.lower())
+
+        # Test future date error in Russian
+        future_message = "John Doe\n1.1.2050"
+        success, error_message_ru = validate_birthday_input(future_message, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("будущем", error_message_ru.lower())
+
+        # Test date parse error in Russian
+        invalid_message = "John Doe\n32.13.2000"
+        success, error_message_ru = validate_birthday_input(invalid_message, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("разобрать", error_message_ru.lower())
+
+        # Test backward compatibility (no chat_id)
+        success, error_message_en = validate_birthday_input(message_incomplete)
+        self.assertFalse(success)
+        self.assertIn("incomplete", error_message_en.lower())
 
 
 def test_compute_age_metrics():

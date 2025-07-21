@@ -916,7 +916,7 @@ def handle_message(message):
 
         case TUserState.AwaitingBirthday:
             try:
-                success, error_message = utils.validate_birthday_input(user_message)
+                success, error_message = utils.validate_birthday_input(user_message, chat_id)
                 if not success:
                     err_msg = bot.send_message(
                         chat_id,

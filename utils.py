@@ -4,6 +4,11 @@ import re
 from datetime import datetime, timedelta
 from typing import List, Union
 
+# Delayed import to avoid circular dependencies
+def get_i18n():
+    import i18n
+    return i18n
+
 DEFAULT_BD_YEAR = 1900
 
 TDuration = int
@@ -77,13 +82,18 @@ def get_time(timestamp_str: str) -> Union[TDuration, None]:
     return None
 
 
-def validate_birthday_input(message: str) -> tuple[bool, str]:
+def validate_birthday_input(message: str, chat_id: int = None) -> tuple[bool, str]:
     lines = message.strip().split("\n")
     if len(lines) % 2 != 0:
-        return False, (
-            "It seems like your input is incomplete. "
-            "Please ensure each name is followed by a date on a new line."
-        )
+        if chat_id is not None:
+            i18n = get_i18n()
+            error_msg = i18n.get_message("input_incomplete", chat_id)
+        else:
+            error_msg = (
+                "It seems like your input is incomplete. "
+                "Please ensure each name is followed by a date on a new line."
+            )
+        return False, error_msg
 
     for i in range(0, len(lines), 2):
         _ = lines[i].strip()  # name
@@ -96,20 +106,30 @@ def validate_birthday_input(message: str) -> tuple[bool, str]:
                 try:
                     day, month, year = map(int, parts)
                     if year > datetime.now().year:
-                        return False, (
-                            f"Birthday '{date_str}' cannot be in the future. "
-                            "Please provide a valid past date."
-                        )
+                        if chat_id is not None:
+                            i18n = get_i18n()
+                            error_msg = i18n.get_message("birthday_in_future", chat_id, date=date_str)
+                        else:
+                            error_msg = (
+                                f"Birthday '{date_str}' cannot be in the future. "
+                                "Please provide a valid past date."
+                            )
+                        return False, error_msg
                 except Exception:
                     pass
-            return False, (
-                f"I couldn't parse the date '{date_str}' on line {i + 2}. "
-                "Please use one of the following formats:\n"
-                "- day.month.year (e.g., 5.06.2001)\n"
-                "- day.month (e.g., 5.06)\n"
-                "- day.month age (e.g., 5.06 19)\n"
-                "Ensure the date is valid and within the last 200 years."
-            )
+            if chat_id is not None:
+                i18n = get_i18n()
+                error_msg = i18n.get_message("date_parse_error", chat_id, date=date_str, line=i + 2)
+            else:
+                error_msg = (
+                    f"I couldn't parse the date '{date_str}' on line {i + 2}. "
+                    "Please use one of the following formats:\n"
+                    "- day.month.year (e.g., 5.06.2001)\n"
+                    "- day.month (e.g., 5.06)\n"
+                    "- day.month age (e.g., 5.06 19)\n"
+                    "Ensure the date is valid and within the last 200 years."
+                )
+            return False, error_msg
 
     return True, ""
 

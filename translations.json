@@ -117,8 +117,8 @@
       "ru": "У вас нет активного резервного копирования."
     },
     "contribute": {
-      "en": "*Contribute to the project:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)",
-      "ru": "*Внести вклад в проект:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)"
+      "en": "*Contribute to the project:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)\nIf any issues, contact @pchelka_zh",
+      "ru": "*Внести вклад в проект:*\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)\nЕсли есть проблемы, обратитесь к @pchelka_zh"
     },
     "configure_reminders": {
       "en": "Configure when you want to receive birthday reminders:",
@@ -275,6 +275,18 @@
     "days": {
       "en": "days",
       "ru": "дней"
+    },
+    "input_incomplete": {
+      "en": "It seems like your input is incomplete. Please ensure each name is followed by a date on a new line.",
+      "ru": "Кажется, ваш ввод неполный. Пожалуйста, убедитесь, что каждое имя сопровождается датой на новой строке."
+    },
+    "birthday_in_future": {
+      "en": "Birthday '{date}' cannot be in the future. Please provide a valid past date.",
+      "ru": "День рождения '{date}' не может быть в будущем. Пожалуйста, укажите действительную прошедшую дату."
+    },
+    "date_parse_error": {
+      "en": "I couldn't parse the date '{date}' on line {line}. Please use one of the following formats:\n- day.month.year (e.g., 5.06.2001)\n- day.month (e.g., 5.06)\n- day.month age (e.g., 5.06 19)\nEnsure the date is valid and within the last 200 years.",
+      "ru": "Не удалось разобрать дату '{date}' на строке {line}. Пожалуйста, используйте один из следующих форматов:\n- день.месяц.год (например, 5.06.2001)\n- день.месяц (например, 5.06)\n- день.месяц возраст (например, 5.06 19)\nУбедитесь, что дата действительна и в пределах последних 200 лет."
     }
   },
   "month_names": {
