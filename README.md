@@ -309,10 +309,14 @@ Telegram: [@pchelka_zh](https://t.me/pchelka_zh)
 <!-- GitHub Activity Graph -->
 [![Contribution Graph](https://github-readme-activity-graph.vercel.app/graph?username=Nikfilk2030&theme=github-light)](https://github.com/Nikfilk2030/birthday_reminder_bot/graphs/contributors)
 
-<!-- GitHub Stats -->
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=Nikfilk2030&show_icons=true&theme=light)
-
-<!-- GitHub Streak Stats -->
-[![GitHub Streak](https://github-readme-streak-stats.herokuapp.com/?user=Nikfilk2030&theme=light)](https://git.io/streak-stats)
-
 </div>
+
+## Stars to the Moon 🚀
+
+<a href="https://star-history.com/#Nikfilk2030/birthday-reminder-bot&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Nikfilk2030/birthday-reminder-bot&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Nikfilk2030/birthday-reminder-bot&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Nikfilk2030/birthday-reminder-bot&type=Date" />
+ </picture>
+</a>
