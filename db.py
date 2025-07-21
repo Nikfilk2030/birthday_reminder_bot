@@ -383,7 +383,9 @@ def mark_birthday_reminder_sent(birthday_id: int, days_until: int) -> None:
     try:
         # Validate input to prevent SQL injection
         if days_until not in [0, 1, 3, 7]:
-            logging.error(f"Invalid days_until value: {days_until}. Must be 0, 1, 3, or 7.")
+            logging.error(
+                f"Invalid days_until value: {days_until}. Must be 0, 1, 3, or 7."
+            )
             return
 
         conn = sqlite3.connect(DB_FILE)
@@ -391,18 +393,32 @@ def mark_birthday_reminder_sent(birthday_id: int, days_until: int) -> None:
 
         # Use proper parameterized query for safety
         if days_until == 0:
-            cursor.execute("UPDATE birthdays SET was_reminded_0_days_ago = TRUE WHERE id = ?", (birthday_id,))
+            cursor.execute(
+                "UPDATE birthdays SET was_reminded_0_days_ago = TRUE WHERE id = ?",
+                (birthday_id,),
+            )
         elif days_until == 1:
-            cursor.execute("UPDATE birthdays SET was_reminded_1_days_ago = TRUE WHERE id = ?", (birthday_id,))
+            cursor.execute(
+                "UPDATE birthdays SET was_reminded_1_days_ago = TRUE WHERE id = ?",
+                (birthday_id,),
+            )
         elif days_until == 3:
-            cursor.execute("UPDATE birthdays SET was_reminded_3_days_ago = TRUE WHERE id = ?", (birthday_id,))
+            cursor.execute(
+                "UPDATE birthdays SET was_reminded_3_days_ago = TRUE WHERE id = ?",
+                (birthday_id,),
+            )
         elif days_until == 7:
-            cursor.execute("UPDATE birthdays SET was_reminded_7_days_ago = TRUE WHERE id = ?", (birthday_id,))
+            cursor.execute(
+                "UPDATE birthdays SET was_reminded_7_days_ago = TRUE WHERE id = ?",
+                (birthday_id,),
+            )
 
         conn.commit()
         conn.close()
 
-        logging.debug(f"Marked {days_until}-day reminder as sent for birthday ID {birthday_id}")
+        logging.debug(
+            f"Marked {days_until}-day reminder as sent for birthday ID {birthday_id}"
+        )
 
     except sqlite3.Error as e:
         logging.error(f"Error marking reminder as sent: {e}")
