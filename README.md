@@ -306,9 +306,6 @@ Telegram: [@pchelka_zh](https://t.me/pchelka_zh)
 [![GitHub Contributors](https://img.shields.io/github/contributors/Nikfilk2030/birthday_reminder_bot)](https://github.com/Nikfilk2030/birthday_reminder_bot/graphs/contributors)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
-<!-- GitHub Activity Graph -->
-[![Contribution Graph](https://github-readme-activity-graph.vercel.app/graph?username=Nikfilk2030&theme=github-light)](https://github.com/Nikfilk2030/birthday_reminder_bot/graphs/contributors)
-
 </div>
 
 ## Stars to the Moon 🚀
