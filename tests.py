@@ -633,7 +633,8 @@ class TestInternationalization(unittest.TestCase):
         self.assertIsInstance(welcome, str)
         self.assertIn("Welcome", welcome)
 
-        def test_bot_functions_integration(self):
+    def test_bot_functions_integration(self):
+        pass
         """Test that bot functions work with i18n"""
         # This test ensures all functions used in bot.py exist
         try:
