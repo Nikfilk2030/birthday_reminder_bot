@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import db
 import utils
+import i18n
 from utils import (get_time, is_timestamp_valid, parse_date,
                    validate_birthday_input)
 
@@ -482,6 +483,133 @@ class TestBirthdayReminderLogic(unittest.TestCase):
                 result[0],
                 f"Field {field_name} should be True after marking reminder as sent",
             )
+
+
+class TestInternationalization(unittest.TestCase):
+    def setUp(self):
+        self.original_db_file = db.DB_FILE
+        db.DB_FILE = "test_i18n.db"
+        db.init_db()
+        self.test_chat_id = 123456789
+
+    def tearDown(self):
+        if os.path.exists(db.DB_FILE):
+            os.remove(db.DB_FILE)
+        db.DB_FILE = self.original_db_file
+
+    def test_default_language(self):
+        """Test that default language is English"""
+        language = i18n.get_user_language(self.test_chat_id)
+        self.assertEqual(language, "en")
+
+    def test_set_user_language(self):
+        """Test setting user language preference"""
+        # Test setting Russian
+        result = i18n.set_user_language(self.test_chat_id, "ru")
+        self.assertTrue(result)
+
+        language = i18n.get_user_language(self.test_chat_id)
+        self.assertEqual(language, "ru")
+
+        # Test setting English
+        result = i18n.set_user_language(self.test_chat_id, "en")
+        self.assertTrue(result)
+
+        language = i18n.get_user_language(self.test_chat_id)
+        self.assertEqual(language, "en")
+
+    def test_invalid_language(self):
+        """Test setting invalid language"""
+        result = i18n.set_user_language(self.test_chat_id, "fr")  # French not supported
+        self.assertFalse(result)
+
+        # Should remain default
+        language = i18n.get_user_language(self.test_chat_id)
+        self.assertEqual(language, "en")
+
+    def test_get_button_text(self):
+        """Test getting translated button text"""
+        # Test English (default)
+        start_button_en = i18n.get_button_text("start", self.test_chat_id)
+        self.assertEqual(start_button_en, "🚀 Start")
+
+        # Set to Russian
+        i18n.set_user_language(self.test_chat_id, "ru")
+        start_button_ru = i18n.get_button_text("start", self.test_chat_id)
+        self.assertEqual(start_button_ru, "🚀 Начать")
+
+    def test_get_message(self):
+        """Test getting translated messages"""
+        # Test English
+        welcome_en = i18n.get_message("welcome_title", self.test_chat_id)
+        self.assertIn("Welcome", welcome_en)
+
+        # Set to Russian
+        i18n.set_user_language(self.test_chat_id, "ru")
+        welcome_ru = i18n.get_message("welcome_title", self.test_chat_id)
+        self.assertIn("Добро пожаловать", welcome_ru)
+
+    def test_message_formatting(self):
+        """Test message formatting with variables"""
+        # Test backup message with interval formatting
+        i18n.set_user_language(self.test_chat_id, "en")
+        backup_msg_en = i18n.get_message("backup_ping_active", self.test_chat_id, interval=60)
+        self.assertIn("60", backup_msg_en)
+
+        i18n.set_user_language(self.test_chat_id, "ru")
+        backup_msg_ru = i18n.get_message("backup_ping_active", self.test_chat_id, interval=60)
+        self.assertIn("60", backup_msg_ru)
+
+    def test_month_names(self):
+        """Test month name translations"""
+        i18n.set_user_language(self.test_chat_id, "en")
+        january_en = i18n.get_text("month_names.January", self.test_chat_id)
+        self.assertEqual(january_en, "January")
+
+        i18n.set_user_language(self.test_chat_id, "ru")
+        january_ru = i18n.get_text("month_names.January", self.test_chat_id)
+        self.assertEqual(january_ru, "Январь")
+
+    def test_missing_translation_fallback(self):
+        """Test fallback behavior for missing translations"""
+        # Test with non-existent key
+        missing_text = i18n.get_text("non.existent.key", self.test_chat_id)
+        self.assertEqual(missing_text, "non.existent.key")  # Should return key itself
+
+    def test_database_language_functions(self):
+        """Test database language functions directly"""
+        # Test setting language in database
+        db.set_user_language(self.test_chat_id, "ru")
+        language = db.get_user_language(self.test_chat_id)
+        self.assertEqual(language, "ru")
+
+        # Test updating language
+        db.set_user_language(self.test_chat_id, "en")
+        language = db.get_user_language(self.test_chat_id)
+        self.assertEqual(language, "en")
+
+    def test_command_descriptions(self):
+        """Test that command descriptions work with different languages"""
+        # Test that we can get descriptions in both languages
+        i18n.set_user_language(self.test_chat_id, "en")
+        desc_en = i18n.get_text("button_descriptions.start", self.test_chat_id)
+        self.assertIn("Start", desc_en)
+
+        i18n.set_user_language(self.test_chat_id, "ru")
+        desc_ru = i18n.get_text("button_descriptions.start", self.test_chat_id)
+        self.assertIn("Запустить", desc_ru)
+
+    def test_translation_file_loading(self):
+        """Test that translation file is loaded correctly"""
+        # Test that we have both supported languages
+        translations = i18n.i18n.translations
+        self.assertIn("buttons", translations)
+        self.assertIn("messages", translations)
+        self.assertIn("month_names", translations)
+
+        # Test that each section has both languages
+        self.assertIn("en", translations["buttons"]["start"])
+        self.assertIn("ru", translations["buttons"]["start"])
 
 
 def test_compute_age_metrics():

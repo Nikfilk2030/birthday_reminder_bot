@@ -1,0 +1,330 @@
+{
+  "buttons": {
+    "start": {
+      "en": "🚀 Start",
+      "ru": "🚀 Начать"
+    },
+    "backup": {
+      "en": "💾 Backup",
+      "ru": "💾 Резервная копия"
+    },
+    "register_birthday": {
+      "en": "🎉 Register Birthday",
+      "ru": "🎉 Добавить день рождения"
+    },
+    "register_backup": {
+      "en": "🔐 Register Backup",
+      "ru": "🔐 Настроить резервирование"
+    },
+    "unregister_backup": {
+      "en": "🚫 Unregister Backup",
+      "ru": "🚫 Отключить резервирование"
+    },
+    "delete_birthday": {
+      "en": "❌ Delete Birthday",
+      "ru": "❌ Удалить день рождения"
+    },
+    "share": {
+      "en": "🔗 Share",
+      "ru": "🔗 Поделиться"
+    },
+    "stats": {
+      "en": "📊 Stats",
+      "ru": "📊 Статистика"
+    },
+    "language": {
+      "en": "🇬🇧🇷🇺 Language",
+      "ru": "🇬🇧🇷🇺 Язык"
+    },
+    "lang_english": {
+      "en": "🇬🇧 English",
+      "ru": "🇬🇧 English"
+    },
+    "lang_russian": {
+      "en": "🇷🇺 Русский",
+      "ru": "🇷🇺 Русский"
+    }
+  },
+  "button_descriptions": {
+    "start": {
+      "en": "Start the bot and see available commands.",
+      "ru": "Запустить бота и увидеть доступные команды."
+    },
+    "register_birthday": {
+      "en": "Register a new birthday. *Lifehack: you don't need to click this button, just send a message in the format: 'Name\\nDate of birth'*",
+      "ru": "Добавить новый день рождения. *Лайфхак: не обязательно нажимать эту кнопку, просто отправьте сообщение в формате: 'Имя\\nДата рождения'*"
+    },
+    "delete_birthday": {
+      "en": "Delete a birthday.",
+      "ru": "Удалить день рождения."
+    },
+    "backup": {
+      "en": "Get a list of all your birthdays.",
+      "ru": "Получить список всех ваших дней рождения."
+    },
+    "register_backup": {
+      "en": "Register a new backup interval.",
+      "ru": "Настроить интервал резервного копирования."
+    },
+    "unregister_backup": {
+      "en": "Unregister a backup interval.",
+      "ru": "Отключить резервное копирование."
+    },
+    "share": {
+      "en": "Share your birthdays with your friends.",
+      "ru": "Поделиться днями рождения с друзьями."
+    },
+    "stats": {
+      "en": "Get different statistics.",
+      "ru": "Получить различную статистику."
+    }
+  },
+  "messages": {
+    "welcome_title": {
+      "en": "🎉 *Welcome to Birthday Reminder Bot!* 🎂",
+      "ru": "🎉 *Добро пожаловать в бот Напоминания о днях рождения!* 🎂"
+    },
+    "welcome_subtitle": {
+      "en": "Never forget a birthday again! This bot helps you keep track of birthdays and sends you timely reminders.",
+      "ru": "Больше никогда не забывайте о днях рождения! Этот бот поможет вам отслеживать дни рождения и отправлять своевременные напоминания."
+    },
+    "what_can_bot_do": {
+      "en": "*What can this bot do?*",
+      "ru": "*Что умеет этот бот?*"
+    },
+    "bot_features": {
+      "en": "• Store birthdays of your friends and family\\n• Send reminders before upcoming birthdays\\n• Create regular backups of your birthday list\\n• Customize when you want to receive reminders",
+      "ru": "• Хранить дни рождения ваших друзей и семьи\\n• Отправлять напоминания о предстоящих днях рождения\\n• Создавать регулярные резервные копии списка дней рождения\\n• Настраивать, когда вы хотите получать напоминания"
+    },
+    "how_to_use": {
+      "en": "*How to use:*",
+      "ru": "*Как использовать:*"
+    },
+    "how_to_use_steps": {
+      "en": "1. Click \"🎉 Register Birthday\" to add a new birthday\\n2. Set up reminder preferences below\\n3. Optionally, set up automatic backups",
+      "ru": "1. Нажмите \"🎉 Добавить день рождения\" чтобы добавить новый день рождения\\n2. Настройте предпочтения напоминаний ниже\\n3. При желании настройте автоматическое резервное копирование"
+    },
+    "available_commands": {
+      "en": "*Available Commands:*",
+      "ru": "*Доступные команды:*"
+    },
+    "backup_ping_active": {
+      "en": "You have an active backup ping every {interval} minute(s).",
+      "ru": "У вас активно резервное копирование каждые {interval} минут(ы)."
+    },
+    "backup_ping_inactive": {
+      "en": "You have no active backup ping.",
+      "ru": "У вас нет активного резервного копирования."
+    },
+    "contribute": {
+      "en": "*Contribute to the project:*\\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)",
+      "ru": "*Внести вклад в проект:*\\n[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)"
+    },
+    "configure_reminders": {
+      "en": "Configure when you want to receive birthday reminders:",
+      "ru": "Настройте, когда вы хотите получать напоминания о днях рождения:"
+    },
+    "reminder_example": {
+      "en": "*Example: '1 days' means you'll receive a reminder 1 day before the birthday.*",
+      "ru": "*Пример: '1 день' означает, что вы получите напоминание за 1 день до дня рождения.*"
+    },
+    "reminder_enabled": {
+      "en": "Enabled",
+      "ru": "Включено"
+    },
+    "reminder_disabled": {
+      "en": "Disabled",
+      "ru": "Отключено"
+    },
+    "reminder_days_suffix": {
+      "en": "-day reminders",
+      "ru": "-дневные напоминания"
+    },
+    "no_birthdays": {
+      "en": "You have no saved birthdays.",
+      "ru": "У вас нет сохранённых дней рождения."
+    },
+    "your_birthdays": {
+      "en": "*Your Birthdays:*",
+      "ru": "*Ваши дни рождения:*"
+    },
+    "keyboard_removed": {
+      "en": "The keyboard has been removed.",
+      "ru": "Клавиатура удалена."
+    },
+    "today_birthday": {
+      "en": "📆🎂Today is {name}'s birthday!{age_text} 🎂",
+      "ru": "📆🎂Сегодня день рождения у {name}!{age_text} 🎂"
+    },
+    "upcoming_birthday": {
+      "en": "📆In {days} days {name}'s birthday!{age_text}",
+      "ru": "📆Через {days} дней день рождения у {name}!{age_text}"
+    },
+    "age_suffix": {
+      "en": " (turns {age})",
+      "ru": " (исполняется {age})"
+    },
+    "register_birthday_instructions": {
+      "en": "*Please enter the birthday details in the following format:*\\nFirst line: Name (and surname)\\nSecond line: Date of birth\\n\\n*Possible formats:*\\n- day.month.year  (5.06.2001) - use full 4-digit year\\n- day.month (5.06)\\n- day.month age (5.06 19)\\n\\n*Note:* You can add multiple birthdays by separating them with a new line.\\n*Note:* Dates must must be written in full 4-digit format (e.g., 1994 not 94)\\n\\n*Example:*\\nJohn Doe\\n15.05.1990\\nJane Doe\\n10.06.1991",
+      "ru": "*Пожалуйста, введите данные дня рождения в следующем формате:*\\nПервая строка: Имя (и фамилия)\\nВторая строка: Дата рождения\\n\\n*Возможные форматы:*\\n- день.месяц.год  (5.06.2001) - используйте полный 4-значный год\\n- день.месяц (5.06)\\n- день.месяц возраст (5.06 19)\\n\\n*Примечание:* Вы можете добавить несколько дней рождения, разделив их новой строкой.\\n*Примечание:* Даты должны быть написаны в полном 4-значном формате (например, 1994, а не 94)\\n\\n*Пример:*\\nИван Петров\\n15.05.1990\\nМария Сидорова\\n10.06.1991"
+    },
+    "birthdays_registered": {
+      "en": "Birthdays registered successfully!",
+      "ru": "Дни рождения успешно зарегистрированы!"
+    },
+    "invalid_name_format": {
+      "en": "Invalid name format. Please try again.",
+      "ru": "Неверный формат имени. Пожалуйста, попробуйте ещё раз."
+    },
+    "latest_backup": {
+      "en": "Here's your latest backup:",
+      "ru": "Вот ваша последняя резервная копия:"
+    },
+    "enter_backup_interval": {
+      "en": "Please enter the interval at which to send backup (1 month, 1year, 1год, etc).",
+      "ru": "Пожалуйста, введите интервал отправки резервной копии (1 месяц, 1 год, и т.д.)."
+    },
+    "backup_registered": {
+      "en": "Auto-backup registered! You'll receive backups every {interval} minute(s).",
+      "ru": "Автоматическое резервирование настроено! Вы будете получать резервные копии каждые {interval} минут(ы)."
+    },
+    "invalid_interval_format": {
+      "en": "Invalid interval format. Please try again using a format like '1 month'.",
+      "ru": "Неверный формат интервала. Пожалуйста, попробуйте ещё раз, используя формат типа '1 месяц'."
+    },
+    "backup_unregistered": {
+      "en": "Auto-backup unregistered.",
+      "ru": "Автоматическое резервирование отключено."
+    },
+    "enter_delete_ids": {
+      "en": "Enter the IDs of the birthdays you want to delete, separated by commas",
+      "ru": "Введите ID дней рождения, которые хотите удалить, через запятую"
+    },
+    "birthdays_deleted": {
+      "en": "Successfully deleted birthdays with IDs: {ids}.",
+      "ru": "Успешно удалены дни рождения с ID: {ids}."
+    },
+    "birthdays_not_found": {
+      "en": "Could not find birthdays with IDs: {ids}.",
+      "ru": "Не удалось найти дни рождения с ID: {ids}."
+    },
+    "invalid_ids_format": {
+      "en": "Invalid input. Please enter numerical IDs separated by commas.",
+      "ru": "Неверный ввод. Пожалуйста, введите числовые ID через запятую."
+    },
+    "local_statistics": {
+      "en": "📍 *Local Statistics:*",
+      "ru": "📍 *Локальная статистика:*"
+    },
+    "global_statistics": {
+      "en": "🌐 *Global Statistics:*",
+      "ru": "🌐 *Глобальная статистика:*"
+    },
+    "total_birthdays_chat": {
+      "en": "• Total Birthdays in this Chat: {count}",
+      "ru": "• Всего дней рождения в этом чате: {count}"
+    },
+    "birthdays_this_month": {
+      "en": "• Birthdays in this Month: {count}",
+      "ru": "• Дни рождения в этом месяце: {count}"
+    },
+    "most_popular_month": {
+      "en": "• Most Popular Birthday Month: {month} ({count} birthdays)",
+      "ru": "• Самый популярный месяц рождения: {month} ({count} дней рождения)"
+    },
+    "total_birthdays_all": {
+      "en": "• Total Birthdays in All Chats: {count}",
+      "ru": "• Всего дней рождения во всех чатах: {count}"
+    },
+    "total_users": {
+      "en": "• Total Users: {count}",
+      "ru": "• Всего пользователей: {count}"
+    },
+    "age_statistics": {
+      "en": "• Age Statistics:",
+      "ru": "• Статистика возраста:"
+    },
+    "average_age": {
+      "en": "   - Average Age: {age}",
+      "ru": "   - Средний возраст: {age}"
+    },
+    "minimum_age": {
+      "en": "   - Minimum Age: {age}",
+      "ru": "   - Минимальный возраст: {age}"
+    },
+    "maximum_age": {
+      "en": "   - Maximum Age: {age}",
+      "ru": "   - Максимальный возраст: {age}"
+    },
+    "age_stats_na": {
+      "en": "• Age Statistics: N/A (no birthdays with full date)",
+      "ru": "• Статистика возраста: Н/Д (нет дней рождения с полной датой)"
+    },
+    "language_changed": {
+      "en": "Language changed to English! 🇬🇧",
+      "ru": "Язык изменён на русский! 🇷🇺"
+    },
+    "unknown_command": {
+      "en": "Unknown command",
+      "ru": "Неизвестная команда"
+    },
+    "invalid_action": {
+      "en": "Invalid action",
+      "ru": "Неверное действие"
+    },
+    "days": {
+      "en": "days",
+      "ru": "дней"
+    }
+  },
+  "month_names": {
+    "January": {
+      "en": "January",
+      "ru": "Январь"
+    },
+    "February": {
+      "en": "February",
+      "ru": "Февраль"
+    },
+    "March": {
+      "en": "March",
+      "ru": "Март"
+    },
+    "April": {
+      "en": "April",
+      "ru": "Апрель"
+    },
+    "May": {
+      "en": "May",
+      "ru": "Май"
+    },
+    "June": {
+      "en": "June",
+      "ru": "Июнь"
+    },
+    "July": {
+      "en": "July",
+      "ru": "Июль"
+    },
+    "August": {
+      "en": "August",
+      "ru": "Август"
+    },
+    "September": {
+      "en": "September",
+      "ru": "Сентябрь"
+    },
+    "October": {
+      "en": "October",
+      "ru": "Октябрь"
+    },
+    "November": {
+      "en": "November",
+      "ru": "Ноябрь"
+    },
+    "December": {
+      "en": "December",
+      "ru": "Декабрь"
+    }
+  }
+}

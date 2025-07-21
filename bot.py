@@ -13,6 +13,7 @@ from telebot.types import (InlineKeyboardButton, InlineKeyboardMarkup,
 
 import db
 import utils
+import i18n
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,46 +72,50 @@ class TCommand(enum.Enum):
     DeleteBirthday = "delete_birthday"
     Stats = "stats"
     Share = "share"
+    Language = "language"
 
 
-button_to_command = {
-    "🚀 Start": TCommand.Start,
+# Command mappings for text commands
+COMMAND_MAPPINGS = {
     "/start": TCommand.Start,
     "/help": TCommand.Start,
-    #
-    "💾 Backup": TCommand.Backup,
     "/backup": TCommand.Backup,
-    #
-    "🎉 Register Birthday": TCommand.RegisterBirthday,
     "/register_birthday": TCommand.RegisterBirthday,
-    #
-    "🔐 Register Backup": TCommand.RegisterBackup,
     "/register_backup": TCommand.RegisterBackup,
-    #
-    "🚫 Unregister Backup": TCommand.UnregisterBackup,
     "/unregister_backup": TCommand.UnregisterBackup,
-    #
-    "❌ Delete Birthday": TCommand.DeleteBirthday,
     "/delete_birthday": TCommand.DeleteBirthday,
-    #
-    "🔗 Share": TCommand.Share,
     "/share": TCommand.Share,
-    #
-    "📊 Stats": TCommand.Stats,
     "/stats": TCommand.Stats,
 }
 
 
-description_to_command = {
-    "🚀 Start": "Start the bot and see available commands.",
-    "🎉 Register Birthday": "Register a new birthday. *Lifehack: you don't need to click this button, just send a message in the format: 'Name\nDate of birth'*",
-    "❌ Delete Birthday": "Delete a birthday.",
-    "💾 Backup": "Get a list of all your birthdays.",
-    "🔐 Register Backup": "Register a new backup interval.",
-    "🚫 Unregister Backup": "Unregister a backup interval.",
-    "🔗 Share": "Share your birthdays with your friends.",
-    "📊 Stats": "Get different statistics.",
-}
+def get_button_to_command_mapping(chat_id: int) -> dict:
+    """Get button text to command mapping for specific user's language"""
+    return {
+        i18n.get_button_text("start", chat_id): TCommand.Start,
+        i18n.get_button_text("backup", chat_id): TCommand.Backup,
+        i18n.get_button_text("register_birthday", chat_id): TCommand.RegisterBirthday,
+        i18n.get_button_text("register_backup", chat_id): TCommand.RegisterBackup,
+        i18n.get_button_text("unregister_backup", chat_id): TCommand.UnregisterBackup,
+        i18n.get_button_text("delete_birthday", chat_id): TCommand.DeleteBirthday,
+        i18n.get_button_text("share", chat_id): TCommand.Share,
+        i18n.get_button_text("stats", chat_id): TCommand.Stats,
+        i18n.get_button_text("language", chat_id): TCommand.Language,
+    }
+
+
+def get_command_descriptions(chat_id: int) -> dict:
+    """Get command descriptions for specific user's language"""
+    return {
+        i18n.get_button_text("start", chat_id): i18n.get_button_description("start", chat_id),
+        i18n.get_button_text("register_birthday", chat_id): i18n.get_button_description("register_birthday", chat_id),
+        i18n.get_button_text("delete_birthday", chat_id): i18n.get_button_description("delete_birthday", chat_id),
+        i18n.get_button_text("backup", chat_id): i18n.get_button_description("backup", chat_id),
+        i18n.get_button_text("register_backup", chat_id): i18n.get_button_description("register_backup", chat_id),
+        i18n.get_button_text("unregister_backup", chat_id): i18n.get_button_description("unregister_backup", chat_id),
+        i18n.get_button_text("share", chat_id): i18n.get_button_description("share", chat_id),
+        i18n.get_button_text("stats", chat_id): i18n.get_button_description("stats", chat_id),
+    }
 
 
 def get_all_birthdays(chat_id: int, need_id: bool = False) -> str:
@@ -124,30 +129,65 @@ def is_group_chat(message) -> bool:
 def remove_keyboard(message):
     delete_message = bot.send_message(
         message.chat.id,
-        "The keyboard has been removed.",
+        i18n.get_message("keyboard_removed", message.chat.id),
         reply_markup=ReplyKeyboardRemove(),
     )
     bot.delete_message(delete_message.chat.id, delete_message.message_id)
 
 
 def get_reply_markup(message) -> InlineKeyboardMarkup | None:
+    chat_id = message.chat.id
     markup = InlineKeyboardMarkup()
     buttons = [
-        InlineKeyboardButton("🚀 Start", callback_data="🚀 Start"),
-        InlineKeyboardButton("💾 Backup", callback_data="💾 Backup"),
         InlineKeyboardButton(
-            "🎉 Register Birthday", callback_data="🎉 Register Birthday"
+            i18n.get_button_text("start", chat_id),
+            callback_data="start"
         ),
-        InlineKeyboardButton("🔐 Register Backup", callback_data="🔐 Register Backup"),
-        InlineKeyboardButton("❌ Delete Birthday", callback_data="❌ Delete Birthday"),
         InlineKeyboardButton(
-            "🚫 Unregister Backup", callback_data="🚫 Unregister Backup"
+            i18n.get_button_text("backup", chat_id),
+            callback_data="backup"
         ),
-        InlineKeyboardButton("🔗 Share", callback_data="🔗 Share"),
-        InlineKeyboardButton("📊 Stats", callback_data="📊 Stats"),
+        InlineKeyboardButton(
+            i18n.get_button_text("register_birthday", chat_id),
+            callback_data="register_birthday"
+        ),
+        InlineKeyboardButton(
+            i18n.get_button_text("register_backup", chat_id),
+            callback_data="register_backup"
+        ),
+        InlineKeyboardButton(
+            i18n.get_button_text("delete_birthday", chat_id),
+            callback_data="delete_birthday"
+        ),
+        InlineKeyboardButton(
+            i18n.get_button_text("unregister_backup", chat_id),
+            callback_data="unregister_backup"
+        ),
+        InlineKeyboardButton(
+            i18n.get_button_text("share", chat_id),
+            callback_data="share"
+        ),
+        InlineKeyboardButton(
+            i18n.get_button_text("stats", chat_id),
+            callback_data="stats"
+        ),
+        InlineKeyboardButton(
+            i18n.get_button_text("language", chat_id),
+            callback_data="language"
+        ),
     ]
     for i in range(0, len(buttons), 2):
         markup.row(*buttons[i : (i + 2)])
+    return markup
+
+
+def get_language_keyboard() -> InlineKeyboardMarkup:
+    """Create language selection keyboard"""
+    markup = InlineKeyboardMarkup()
+    markup.row(
+        InlineKeyboardButton("🇬🇧 English", callback_data="lang_en"),
+        InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
+    )
     return markup
 
 
@@ -158,7 +198,7 @@ def get_reminder_settings_keyboard(chat_id) -> InlineKeyboardMarkup:
 
     reminder_buttons = [
         InlineKeyboardButton(
-            f"{'✅' if days in current_settings else '❌'} {days} days",
+            f"{'✅' if days in current_settings else '❌'} {days} {i18n.get_message('days', chat_id)}",
             callback_data=f"reminder_{days}",
         )
         for days in REMINDED_DAYS
@@ -331,62 +371,59 @@ def handle_stats(message):
 
 
 def handle_start(message):
-    user_states[message.chat.id] = TUserState.Default
+    chat_id = message.chat.id
+    user_states[chat_id] = TUserState.Default
 
     # remove /start command itself
-    bot.delete_message(message.chat.id, message.message_id)
+    bot.delete_message(chat_id, message.message_id)
 
     # Remove any existing keyboard
     remove_keyboard(message)
 
-    backup_ping_settings = db.select_from_backup_ping(message.chat.id)
+    backup_ping_settings = db.select_from_backup_ping(chat_id)
     if backup_ping_settings.is_active:
-        backup_ping_msg = f"You have an active backup ping every {backup_ping_settings.update_timedelta} minute(s).\n"
+        backup_ping_msg = i18n.get_message("backup_ping_active", chat_id, interval=backup_ping_settings.update_timedelta) + "\n"
     else:
-        backup_ping_msg = "You have no active backup ping.\n"
+        backup_ping_msg = i18n.get_message("backup_ping_inactive", chat_id) + "\n"
 
+    commands_descriptions = get_command_descriptions(chat_id)
     commands_msg = "\n".join(
         [
             f"{command}: {description}"
-            for command, description in description_to_command.items()
+            for command, description in commands_descriptions.items()
         ]
     )
 
-    bot.send_message(
-        message.chat.id,
-        f"""
-🎉 *Welcome to Birthday Reminder Bot!* 🎂
+    welcome_message = f"""
+{i18n.get_message("welcome_title", chat_id)}
 
-Never forget a birthday again! This bot helps you keep track of birthdays and sends you timely reminders.
+{i18n.get_message("welcome_subtitle", chat_id)}
 
-*What can this bot do?*
-• Store birthdays of your friends and family
-• Send reminders before upcoming birthdays
-• Create regular backups of your birthday list
-• Customize when you want to receive reminders
+{i18n.get_message("what_can_bot_do", chat_id)}
+{i18n.get_message("bot_features", chat_id)}
 
-*How to use:*
-1. Click "🎉 Register Birthday" to add a new birthday
-2. Set up reminder preferences below
-3. Optionally, set up automatic backups
+{i18n.get_message("how_to_use", chat_id)}
+{i18n.get_message("how_to_use_steps", chat_id)}
 
-*Available Commands:*
+{i18n.get_message("available_commands", chat_id)}
 {commands_msg}
 
 {backup_ping_msg}
-*Contribute to the project:*
-[GitHub](https://github.com/Nikfilk2030/birthday_reminder_bot)
-""",
+{i18n.get_message("contribute", chat_id)}
+"""
+
+    bot.send_message(
+        chat_id,
+        welcome_message,
         reply_markup=get_reply_markup(message),
         parse_mode="Markdown",
     )
-    logging.debug(f"Sent welcome message to Chat ID {message.chat.id}")
+    logging.debug(f"Sent welcome message to Chat ID {chat_id}")
 
     bot.send_message(
-        message.chat.id,
-        "Configure when you want to receive birthday reminders:\n\n"
-        "*Example: '1 days' means you'll receive a reminder 1 day before the birthday.*",
-        reply_markup=get_reminder_settings_keyboard(message.chat.id),
+        chat_id,
+        f"{i18n.get_message('configure_reminders', chat_id)}\n\n{i18n.get_message('reminder_example', chat_id)}",
+        reply_markup=get_reminder_settings_keyboard(chat_id),
         parse_mode="Markdown",
     )
 
@@ -411,19 +448,42 @@ def handle_reminder_callback(call):
         reply_markup=get_reminder_settings_keyboard(chat_id),
     )
 
+    status = i18n.get_message("reminder_enabled" if days in current_settings else "reminder_disabled", chat_id)
     bot.answer_callback_query(
         call.id,
-        f"{'Enabled' if days in current_settings else 'Disabled'} {days}-day reminders",
+        f"{status} {days}{i18n.get_message('reminder_days_suffix', chat_id)}",
     )
 
     user_states[call.message.chat.id] = TUserState.Default
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("lang_"))
+def handle_language_callback(call):
+    language_code = call.data.split("_")[1]
+    chat_id = call.message.chat.id
+
+    if i18n.set_user_language(chat_id, language_code):
+        # Delete the language selection message
+        bot.delete_message(chat_id, call.message.message_id)
+
+        # Send confirmation message
+        bot.send_message(
+            chat_id,
+            i18n.get_message("language_changed", chat_id),
+            parse_mode="Markdown",
+        )
+
+        # Refresh the main menu with new language
+        handle_start(call.message)
+
+    bot.answer_callback_query(call.id)
 
 
 def get_all_birthdays_formatted(chat_id: int, need_id: bool = False) -> str:
     all_birthdays = get_all_birthdays(chat_id, need_id)
 
     if not all_birthdays:
-        return "You have no saved birthdays."
+        return i18n.get_message("no_birthdays", chat_id)
 
     birthdays_by_month = {}
     for line in all_birthdays.split("\n"):
@@ -432,11 +492,13 @@ def get_all_birthdays_formatted(chat_id: int, need_id: bool = False) -> str:
             date_str, "%d %B %Y" if "Current age" in line else "%d %B"
         )
         month = date.strftime("%B")
-        if month not in birthdays_by_month:
-            birthdays_by_month[month] = []
-        birthdays_by_month[month].append(line)
+        # Translate month name
+        translated_month = i18n.get_month_name(month, chat_id)
+        if translated_month not in birthdays_by_month:
+            birthdays_by_month[translated_month] = []
+        birthdays_by_month[translated_month].append(line)
 
-    markdown_message = "*Your Birthdays:*\n\n"
+    markdown_message = f"{i18n.get_message('your_birthdays', chat_id)}\n\n"
     for month, birthdays in birthdays_by_month.items():
         markdown_message += f"*{month}*\n"
         for birthday in birthdays:
@@ -518,17 +580,13 @@ def process_birthday_pings():
                         age_text = ""
                         if has_year:
                             age = current_year - birthday.year
-                            age_text = f" (turns {age})"
+                            age_text = i18n.get_message("age_suffix", chat_id, age=age)
 
                         if days_until == 0:
                             bot.send_message(chat_id, "🎂")
-                            reminder_text = (
-                                f"📆🎂Today is {name}'s birthday!{age_text} 🎂"
-                            )
+                            reminder_text = i18n.get_message("today_birthday", chat_id, name=name, age_text=age_text)
                         else:
-                            reminder_text = (
-                                f"📆In {days_until} days {name}'s birthday!{age_text}"
-                            )
+                            reminder_text = i18n.get_message("upcoming_birthday", chat_id, days=days_until, name=name, age_text=age_text)
 
                         bot.send_message(chat_id, reminder_text)
 
@@ -551,25 +609,7 @@ def register_birthday(message):
 
     instruct_msg = bot.send_message(
         chat_id,
-        (
-            "*Please enter the birthday details in the following format:*\n"
-            "First line: Name (and surname)\n"
-            "Second line: Date of birth\n"
-            "\n"
-            "*Possible formats:*\n"
-            "- day.month.year  (5.06.2001) - use full 4-digit year\n"
-            "- day.month (5.06)\n"
-            "- day.month age (5.06 19)\n"
-            "\n"
-            "*Note:* You can add multiple birthdays by separating them with a new line.\n"
-            "*Note:* Dates must must be written in full 4-digit format (e.g., 1994 not 94)\n"
-            "\n"
-            "*Example:*\n"
-            "John Doe\n"
-            "15.05.1990\n"
-            "Jane Doe\n"
-            "10.06.1991\n"
-        ),
+        i18n.get_message("register_birthday_instructions", chat_id),
         parse_mode="Markdown",
     )
 
@@ -607,7 +647,7 @@ def process_backup_pings():
                 all_birthdays = get_all_birthdays_formatted(chat_id)
                 bot.send_message(
                     chat_id,
-                    f"Here's your latest backup:\n{all_birthdays}",
+                    f"{i18n.get_message('latest_backup', chat_id)}\n{all_birthdays}",
                     parse_mode="Markdown",
                 )
 
@@ -620,7 +660,7 @@ def register_backup(message):
 
     msg = bot.send_message(
         chat_id,
-        "Please enter the interval at which to send backup (1 month, 1year, 1год, etc).",
+        i18n.get_message("enter_backup_interval", chat_id),
         parse_mode="Markdown",
     )
 
@@ -634,7 +674,7 @@ def unregister_backup(message):
     db.unregister_backup_ping(chat_id)
     bot.send_message(
         chat_id,
-        "Auto-backup unregistered.",
+        i18n.get_message("backup_unregistered", chat_id),
         parse_mode="Markdown",
     )
 
@@ -643,12 +683,12 @@ def unregister_backup(message):
 
 def handle_deletion(message):
     chat_id = message.chat.id
-    all_birthdays = get_all_birthdays_formatted(message.chat.id, need_id=True)
+    all_birthdays = get_all_birthdays_formatted(chat_id, need_id=True)
     birthdays_messages = utils.split_message(all_birthdays)
 
     instruct_msg = bot.send_message(
         chat_id,
-        "Enter the IDs of the birthdays you want to delete, separated by commas",
+        i18n.get_message("enter_delete_ids", chat_id),
         parse_mode="Markdown",
     )
 
@@ -663,9 +703,29 @@ def handle_deletion(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback_query(call):
-    if call.data in button_to_command:
-        command = button_to_command[call.data]
-        message = call.message
+    # Skip if already handled by specific handlers
+    if call.data.startswith("reminder_") or call.data.startswith("lang_"):
+        return
+
+    message = call.message
+    chat_id = message.chat.id
+
+    # Map callback data to commands
+    command_mapping = {
+        "start": TCommand.Start,
+        "backup": TCommand.Backup,
+        "register_birthday": TCommand.RegisterBirthday,
+        "register_backup": TCommand.RegisterBackup,
+        "unregister_backup": TCommand.UnregisterBackup,
+        "delete_birthday": TCommand.DeleteBirthday,
+        "stats": TCommand.Stats,
+        "share": TCommand.Share,
+        "language": TCommand.Language,
+    }
+
+    if call.data in command_mapping:
+        command = command_mapping[call.data]
+
         if command == TCommand.Start:
             handle_start(message)
         elif command == TCommand.Backup:
@@ -682,10 +742,17 @@ def handle_callback_query(call):
             handle_stats(message)
         elif command == TCommand.Share:
             send_share_message(message)
+        elif command == TCommand.Language:
+            bot.send_message(
+                chat_id,
+                i18n.get_button_text("language", chat_id),
+                reply_markup=get_language_keyboard(),
+                parse_mode="Markdown",
+            )
         else:
-            bot.answer_callback_query(call.id, "Unknown command")
+            bot.answer_callback_query(call.id, i18n.get_message("unknown_command", chat_id))
     else:
-        bot.answer_callback_query(call.id, "Invalid action")
+        bot.answer_callback_query(call.id, i18n.get_message("invalid_action", chat_id))
 
 
 @bot.message_handler(func=lambda message: True)
@@ -696,40 +763,66 @@ def handle_message(message):
     if user_message == "/clear":
         # Secret command to clear keyboard
         bot.delete_message(chat_id, message.message_id)
-
         # Remove keyboard and clean up that message
         remove_keyboard(message)
         return
 
-    global button_to_command
-    if message.text in button_to_command.keys():
-        match button_to_command[message.text]:
-            case TCommand.Start:
-                handle_start(message)
-                return
-            case TCommand.Backup:
-                send_backup(message)
-                return
-            case TCommand.RegisterBirthday:
-                register_birthday(message)
-                return
-            case TCommand.RegisterBackup:
-                register_backup(message)
-                return
-            case TCommand.UnregisterBackup:
-                unregister_backup(message)
-                return
-            case TCommand.DeleteBirthday:
-                handle_deletion(message)
-                return
-            case TCommand.Stats:
-                handle_stats(message)
-                return
-            case TCommand.Share:
-                send_share_message(message)
-                return
-            case _:
-                raise ValueError("Unknown command")
+    # Handle text commands (like /start)
+    if user_message in COMMAND_MAPPINGS:
+        command = COMMAND_MAPPINGS[user_message]
+        if command == TCommand.Start:
+            handle_start(message)
+            return
+        elif command == TCommand.Backup:
+            send_backup(message)
+            return
+        elif command == TCommand.RegisterBirthday:
+            register_birthday(message)
+            return
+        elif command == TCommand.RegisterBackup:
+            register_backup(message)
+            return
+        elif command == TCommand.UnregisterBackup:
+            unregister_backup(message)
+            return
+        elif command == TCommand.DeleteBirthday:
+            handle_deletion(message)
+            return
+        elif command == TCommand.Stats:
+            handle_stats(message)
+            return
+        elif command == TCommand.Share:
+            send_share_message(message)
+            return
+
+    # Handle button texts in user's language
+    button_mapping = get_button_to_command_mapping(chat_id)
+    if user_message in button_mapping:
+        command = button_mapping[user_message]
+        if command == TCommand.Start:
+            handle_start(message)
+            return
+        elif command == TCommand.Backup:
+            send_backup(message)
+            return
+        elif command == TCommand.RegisterBirthday:
+            register_birthday(message)
+            return
+        elif command == TCommand.RegisterBackup:
+            register_backup(message)
+            return
+        elif command == TCommand.UnregisterBackup:
+            unregister_backup(message)
+            return
+        elif command == TCommand.DeleteBirthday:
+            handle_deletion(message)
+            return
+        elif command == TCommand.Stats:
+            handle_stats(message)
+            return
+        elif command == TCommand.Share:
+            send_share_message(message)
+            return
 
     match user_states.get(chat_id):
         case TUserState.AwaitingInterval:
@@ -743,7 +836,7 @@ def handle_message(message):
 
                 bot.send_message(
                     chat_id,
-                    f"Auto-backup registered! You'll receive backups every {interval_in_minutes} minute(s).",
+                    i18n.get_message("backup_registered", chat_id, interval=interval_in_minutes),
                     parse_mode="Markdown",
                 )
 
@@ -760,7 +853,7 @@ def handle_message(message):
             except Exception:
                 error_msg = bot.send_message(
                     chat_id,
-                    "Invalid interval format. Please try again using a format like '1 month'.",
+                    i18n.get_message("invalid_interval_format", chat_id),
                     parse_mode="Markdown",
                 )
 
@@ -784,14 +877,14 @@ def handle_message(message):
                 if deleted_ids:
                     bot.send_message(
                         chat_id,
-                        f"Successfully deleted birthdays with IDs: {', '.join(map(str, deleted_ids))}.",
+                        i18n.get_message("birthdays_deleted", chat_id, ids=', '.join(map(str, deleted_ids))),
                         parse_mode="Markdown",
                     )
 
                 if not_found_ids:
                     bot.send_message(
                         chat_id,
-                        f"Could not find birthdays with IDs: {', '.join(map(str, not_found_ids))}.",
+                        i18n.get_message("birthdays_not_found", chat_id, ids=', '.join(map(str, not_found_ids))),
                         parse_mode="Markdown",
                     )
                     logging.warning(
@@ -811,7 +904,7 @@ def handle_message(message):
             except ValueError:
                 error_msg = bot.send_message(
                     chat_id,
-                    "Invalid input. Please enter numerical IDs separated by commas.",
+                    i18n.get_message("invalid_ids_format", chat_id),
                     parse_mode="Markdown",
                 )
                 birthday_deletion_messages[chat_id].append(error_msg.message_id)
@@ -845,7 +938,7 @@ def handle_message(message):
 
                 bot.send_message(
                     chat_id,
-                    f"Birthdays registered successfully!\n{birthday_msg}",
+                    f"{i18n.get_message('birthdays_registered', chat_id)}\n{birthday_msg}",
                     parse_mode="Markdown",
                 )
 
@@ -862,7 +955,7 @@ def handle_message(message):
             except Exception:
                 bot.send_message(
                     chat_id,
-                    "Invalid name format. Please try again.",
+                    i18n.get_message("invalid_name_format", chat_id),
                     parse_mode="Markdown",
                 )
         case _:

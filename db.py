@@ -100,6 +100,16 @@ def init_db() -> None:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS user_language_settings (
+                chat_id INTEGER PRIMARY KEY,
+                language_code TEXT DEFAULT "en",
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS backup_ping_settings (
                 chat_id INTEGER PRIMARY KEY NOT NULL,
                 last_updated_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -486,3 +496,50 @@ def delete_birthday(chat_id: int, birthday_id: int) -> None:
         logging.error(f"Error deleting birthday: {e}")
         utils.log_exception(e)
         return 0
+
+
+def get_user_language(chat_id: int) -> str:
+    """Get user's language preference. Returns 'en' as default."""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT language_code FROM user_language_settings WHERE chat_id = ?",
+            (chat_id,)
+        )
+        result = cursor.fetchone()
+        conn.close()
+
+        return result[0] if result else "en"
+    except sqlite3.Error as e:
+        logging.error(f"Error getting user language: {e}")
+        utils.log_exception(e)
+        return "en"
+
+
+def set_user_language(chat_id: int, language_code: str) -> None:
+    """Set user's language preference."""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO user_language_settings (chat_id, language_code, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(chat_id) DO UPDATE SET
+                language_code = ?,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (chat_id, language_code, language_code)
+        )
+
+        conn.commit()
+        conn.close()
+
+        logging.info(f"Set language to '{language_code}' for chat {chat_id}")
+
+    except sqlite3.Error as e:
+        logging.error(f"Error setting user language: {e}")
+        utils.log_exception(e)
