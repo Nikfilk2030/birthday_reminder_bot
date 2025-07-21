@@ -5,9 +5,9 @@ Creates multiple types of backups for maximum safety
 """
 
 import os
-import sqlite3
 import subprocess
 from datetime import datetime
+
 
 def create_backup():
     """Creates backup of the main database"""
@@ -23,20 +23,23 @@ def create_backup():
 
     try:
         # 1. Simple file copy
-        subprocess.run([
-            "cp", "data.db", f"backups/data_backup_{timestamp}.db"
-        ], check=True)
+        subprocess.run(
+            ["cp", "data.db", f"backups/data_backup_{timestamp}.db"], check=True
+        )
 
         # 2. SQLite .backup command
-        subprocess.run([
-            "sqlite3", "data.db", f".backup backups/data_sqlite_backup_{timestamp}.db"
-        ], check=True)
+        subprocess.run(
+            [
+                "sqlite3",
+                "data.db",
+                f".backup backups/data_sqlite_backup_{timestamp}.db",
+            ],
+            check=True,
+        )
 
         # 3. SQL dump
         with open(f"backups/data_dump_{timestamp}.sql", "w") as f:
-            subprocess.run([
-                "sqlite3", "data.db", ".dump"
-            ], stdout=f, check=True)
+            subprocess.run(["sqlite3", "data.db", ".dump"], stdout=f, check=True)
 
         print(f"✅ Backup created successfully: {timestamp}")
         return True
@@ -44,6 +47,7 @@ def create_backup():
     except subprocess.CalledProcessError as e:
         print(f"❌ Backup failed: {e}")
         return False
+
 
 def restore_from_backup(backup_file):
     """Restore database from backup file"""
@@ -64,6 +68,7 @@ def restore_from_backup(backup_file):
     except subprocess.CalledProcessError as e:
         print(f"❌ Restore failed: {e}")
         return False
+
 
 if __name__ == "__main__":
     import sys

@@ -381,7 +381,9 @@ class TestBirthdayReminderLogic(unittest.TestCase):
         # Verify the flag was set
         conn = sqlite3.connect(db.DB_FILE)
         cursor = conn.cursor()
-        cursor.execute("SELECT was_reminded_7_days_ago FROM birthdays WHERE id = ?", (birthday_id,))
+        cursor.execute(
+            "SELECT was_reminded_7_days_ago FROM birthdays WHERE id = ?", (birthday_id,)
+        )
         result = cursor.fetchone()
         conn.close()
 
@@ -401,13 +403,16 @@ class TestBirthdayReminderLogic(unittest.TestCase):
         upcoming = db.get_upcoming_birthdays(0)
 
         # Should be empty because reminder was already sent
-        self.assertEqual(len(upcoming), 0, "Should not return birthdays that already have reminders sent")
+        self.assertEqual(
+            len(upcoming),
+            0,
+            "Should not return birthdays that already have reminders sent",
+        )
 
     def test_birthday_reminder_flags_reset_mechanism(self):
         """Test that we need a mechanism to reset reminder flags yearly"""
         # This test demonstrates the current problem and will fail until we fix it
         today = datetime.now()
-        last_year = today.year - 1
 
         # Register a birthday from last year
         test_birthday = datetime(1990, today.month, today.day)
@@ -423,8 +428,11 @@ class TestBirthdayReminderLogic(unittest.TestCase):
 
         # This should NOT be empty - we should get reminders again this year
         # But currently it WILL be empty due to the bug
-        self.assertEqual(len(upcoming), 0,
-                        "This test shows the BUG - reminder flags are never reset, so no reminders are sent in subsequent years")
+        self.assertEqual(
+            len(upcoming),
+            0,
+            "This test shows the BUG - reminder flags are never reset, so no reminders are sent in subsequent years",
+        )
 
     def test_get_upcoming_birthdays_respects_reminder_flags(self):
         """Test that get_upcoming_birthdays properly filters based on reminder flags"""
@@ -464,11 +472,16 @@ class TestBirthdayReminderLogic(unittest.TestCase):
             conn = sqlite3.connect(db.DB_FILE)
             cursor = conn.cursor()
             field_name = f"was_reminded_{days}_days_ago"
-            cursor.execute(f"SELECT {field_name} FROM birthdays WHERE id = ?", (birthday_id,))
+            cursor.execute(
+                f"SELECT {field_name} FROM birthdays WHERE id = ?", (birthday_id,)
+            )
             result = cursor.fetchone()
             conn.close()
 
-            self.assertTrue(result[0], f"Field {field_name} should be True after marking reminder as sent")
+            self.assertTrue(
+                result[0],
+                f"Field {field_name} should be True after marking reminder as sent",
+            )
 
 
 def test_compute_age_metrics():
