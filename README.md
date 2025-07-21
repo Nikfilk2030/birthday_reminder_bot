@@ -284,8 +284,35 @@ Telegram: [@pchelka_zh](https://t.me/pchelka_zh)
 
 ## 🚀 Future Plans
 
-- [ ] Multi-language support
+- [x] Multi-language support
 - [ ] Birthday statistics and analytics
 - [ ] Export/Import functionality
 - [ ] Web interface for management
 - [ ] Group birthday notifications
+
+<div align="center">
+
+[![GitHub Repo stars](https://img.shields.io/github/stars/Nikfilk2030/birthday_reminder_bot?style=social)](https://github.com/Nikfilk2030/birthday_reminder_bot/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/Nikfilk2030/birthday_reminder_bot?style=social)](https://github.com/Nikfilk2030/birthday_reminder_bot/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/Nikfilk2030/birthday_reminder_bot?style=social)](https://github.com/Nikfilk2030/birthday_reminder_bot/watchers)
+
+<!-- Activity Stats -->
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Nikfilk2030/birthday_reminder_bot)
+![GitHub last commit](https://img.shields.io/github/last-commit/Nikfilk2030/birthday_reminder_bot)
+![GitHub issues](https://img.shields.io/github/issues/Nikfilk2030/birthday_reminder_bot)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/Nikfilk2030/birthday_reminder_bot)
+
+<!-- Contribution Stats -->
+[![GitHub Contributors](https://img.shields.io/github/contributors/Nikfilk2030/birthday_reminder_bot)](https://github.com/Nikfilk2030/birthday_reminder_bot/graphs/contributors)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+
+<!-- GitHub Activity Graph -->
+[![Contribution Graph](https://github-readme-activity-graph.vercel.app/graph?username=Nikfilk2030&theme=github-light)](https://github.com/Nikfilk2030/birthday_reminder_bot/graphs/contributors)
+
+<!-- GitHub Stats -->
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=Nikfilk2030&show_icons=true&theme=light)
+
+<!-- GitHub Streak Stats -->
+[![GitHub Streak](https://github-readme-streak-stats.herokuapp.com/?user=Nikfilk2030&theme=light)](https://git.io/streak-stats)
+
+</div>
