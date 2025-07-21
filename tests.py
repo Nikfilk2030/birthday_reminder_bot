@@ -115,7 +115,15 @@ class TestParseDate(unittest.TestCase):
 
 class TestValidateBirthdayInput(unittest.TestCase):
     def setUp(self):
+        self.original_db_file = db.DB_FILE
+        db.DB_FILE = "test_validate_input.db"
+        db.init_db()
         self.test_chat_id = 123456789
+
+    def tearDown(self):
+        if os.path.exists(db.DB_FILE):
+            os.remove(db.DB_FILE)
+        db.DB_FILE = self.original_db_file
 
     def test_incomplete_input(self):
         message = "John Doe\n15.05.1990\nJane Smith"
@@ -761,6 +769,35 @@ class TestInternationalization(unittest.TestCase):
 """
 
         self.assertLess(len(welcome_message_ru), 4096, "Russian welcome message too long for Telegram")
+
+        # Test incomplete input in English (default)
+        message_incomplete = "John Doe"
+        success, error_message = validate_birthday_input(message_incomplete, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("incomplete", error_message.lower())
+
+        # Test Russian translation
+        i18n.set_user_language(self.test_chat_id, "ru")
+        success, error_message_ru = validate_birthday_input(message_incomplete, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("неполный", error_message_ru.lower())
+
+        # Test future date error in Russian
+        future_message = "John Doe\n1.1.2050"
+        success, error_message_ru = validate_birthday_input(future_message, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("будущем", error_message_ru.lower())
+
+        # Test date parse error in Russian
+        invalid_message = "John Doe\n32.13.2000"
+        success, error_message_ru = validate_birthday_input(invalid_message, self.test_chat_id)
+        self.assertFalse(success)
+        self.assertIn("разобрать", error_message_ru.lower())
+
+        # Test backward compatibility (no chat_id)
+        success, error_message_en = validate_birthday_input(message_incomplete)
+        self.assertFalse(success)
+        self.assertIn("incomplete", error_message_en.lower())
 
     def test_utils_translations(self):
         """Test that utils functions use correct translations"""
