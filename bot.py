@@ -564,7 +564,6 @@ def send_backup(message):
 
 
 def process_birthday_pings():
-    last_reset_date = None
     while True:
         minutes = 5
         time.sleep(minutes * 60)
@@ -573,12 +572,8 @@ def process_birthday_pings():
             continue
 
         try:
-            # Reset reminder flags once per day at midnight
-            current_date = datetime.now().date()
-            if last_reset_date != current_date:
-                db.reset_birthday_reminder_flags()
-                last_reset_date = current_date
-                logging.info("Daily reset of birthday reminder flags completed")
+            # Reset flags for birthdays that are far from current date
+            db.reset_birthday_reminder_flags()
 
             for days in REMINDED_DAYS:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
