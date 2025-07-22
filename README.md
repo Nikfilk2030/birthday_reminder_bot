@@ -285,10 +285,13 @@ Telegram: [@pchelka_zh](https://t.me/pchelka_zh)
 ## 🚀 Future Plans
 
 - [x] Multi-language support
-- [ ] Birthday statistics and analytics
-- [ ] Export/Import functionality
-- [ ] Web interface for management
-- [ ] Group birthday notifications
+- [x] Birthday statistics and analytics
+  - [ ] Advanced statistics (help me with ideas)
+- [x] Export/Import functionality
+- [x] Group birthday notifications
+- [ ] Different timezone support
+- [ ] Connection with external sharded/replicated database (not local SQLite)
+- [ ] Advanced settings (help me with ideas)
 
 <div align="center">
 
