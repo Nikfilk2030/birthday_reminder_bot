@@ -8,6 +8,7 @@ from datetime import datetime
 
 import telebot
 from dotenv import load_dotenv
+from telebot import apihelper
 from telebot.types import (InlineKeyboardButton, InlineKeyboardMarkup,
                            ReplyKeyboardRemove)
 
@@ -564,6 +565,7 @@ def send_backup(message):
 
 
 def process_birthday_pings():
+    last_reset_date = None
     while True:
         minutes = 5
         time.sleep(minutes * 60)
@@ -572,8 +574,12 @@ def process_birthday_pings():
             continue
 
         try:
-            # Reset reminder flags for birthdays that have passed
-            db.reset_birthday_reminder_flags()
+            # Reset reminder flags once per day at midnight
+            current_date = datetime.now().date()
+            if last_reset_date != current_date:
+                db.reset_birthday_reminder_flags()
+                last_reset_date = current_date
+                logging.info("Daily reset of birthday reminder flags completed")
 
             for days in REMINDED_DAYS:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
@@ -594,31 +600,46 @@ def process_birthday_pings():
 
                     # Only send reminder if user has enabled this day.
                     if days_until in user_settings:
-                        age_text = ""
-                        if has_year:
-                            age = current_year - birthday.year
-                            age_text = i18n.get_message("age_suffix", chat_id, age=age)
+                        try:
+                            age_text = ""
+                            if has_year:
+                                age = current_year - birthday.year
+                                age_text = i18n.get_message(
+                                    "age_suffix", chat_id, age=age
+                                )
 
-                        if days_until == 0:
-                            bot.send_message(chat_id, "🎂")
-                            reminder_text = i18n.get_message(
-                                "today_birthday", chat_id, name=name, age_text=age_text
-                            )
-                        else:
-                            reminder_text = i18n.get_message(
-                                "upcoming_birthday",
-                                chat_id,
-                                days=days_until,
-                                name=name,
-                                age_text=age_text,
-                            )
+                            if days_until == 0:
+                                bot.send_message(chat_id, "🎂")
+                                reminder_text = i18n.get_message(
+                                    "today_birthday",
+                                    chat_id,
+                                    name=name,
+                                    age_text=age_text,
+                                )
+                            else:
+                                reminder_text = i18n.get_message(
+                                    "upcoming_birthday",
+                                    chat_id,
+                                    days=days_until,
+                                    name=name,
+                                    age_text=age_text,
+                                )
 
-                        bot.send_message(chat_id, reminder_text)
-
-                        db.mark_birthday_reminder_sent(id, days_until)
+                            bot.send_message(chat_id, reminder_text)
+                            db.mark_birthday_reminder_sent(id, days_until)
+                        except telebot.apihelper.ApiTelegramException as e:
+                            if e.error_code == 403:  # Bot was blocked by the user
+                                logging.warning(
+                                    f"Bot was blocked by user {chat_id}, skipping notifications"
+                                )
+                                # Mark reminder as sent to avoid retrying
+                                db.mark_birthday_reminder_sent(id, days_until)
+                            else:
+                                raise  # Re-raise other API exceptions
 
         except Exception as e:
             logging.error(f"Error during birthday ping processing: {e}")
+            utils.log_exception(e)
 
 
 def send_share_message(message):
