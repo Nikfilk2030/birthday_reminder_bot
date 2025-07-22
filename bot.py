@@ -8,7 +8,6 @@ from datetime import datetime
 
 import telebot
 from dotenv import load_dotenv
-from telebot import apihelper
 from telebot.types import (InlineKeyboardButton, InlineKeyboardMarkup,
                            ReplyKeyboardRemove)
 
