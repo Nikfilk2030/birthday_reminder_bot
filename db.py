@@ -437,15 +437,18 @@ def mark_birthday_reminder_sent(birthday_id: int, days_until: int) -> None:
 
 def reset_birthday_reminder_flags() -> None:
     """
-    Reset reminder flags for birthdays that have passed more than 7 days ago.
-    This ensures that reminders will be sent again next year.
+    Reset reminder flags for birthdays that are:
+    - More than 10 days in the future
+    - More than 10 days in the past
+    This ensures that reminders will be sent again next year and prevents duplicate reminders.
     """
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
 
-        # Reset flags for birthdays that are more than 7 days in the past
-        # This handles both same year (already passed) and different year cases
+        # Reset flags for birthdays that are either:
+        # 1. More than 10 days in the past
+        # 2. More than 10 days in the future
         query = """
             UPDATE birthdays
             SET was_reminded_0_days_ago = FALSE,
@@ -453,11 +456,19 @@ def reset_birthday_reminder_flags() -> None:
                 was_reminded_3_days_ago = FALSE,
                 was_reminded_7_days_ago = FALSE
             WHERE (
-                -- Case 1: Birthday this year has already passed by more than 7 days
-                (strftime('%m-%d', birthday) < strftime('%m-%d', date('now', '-7 days')))
+                -- Case 1: Birthday is more than 10 days in the past
+                (
+                    strftime('%m-%d', birthday) < strftime('%m-%d', date('now', '-10 days'))
+                    AND
+                    strftime('%m-%d', birthday) < strftime('%m-%d', 'now')
+                )
                 OR
-                -- Case 2: We're in a new year and birthday hasn't happened yet
-                (strftime('%m-%d', birthday) > strftime('%m-%d', 'now'))
+                -- Case 2: Birthday is more than 10 days in the future
+                (
+                    strftime('%m-%d', birthday) > strftime('%m-%d', date('now', '+10 days'))
+                    AND
+                    strftime('%m-%d', birthday) > strftime('%m-%d', 'now')
+                )
             )
         """
 

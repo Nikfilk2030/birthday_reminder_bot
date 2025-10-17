@@ -73,6 +73,7 @@ class TCommand(enum.Enum):
     Stats = "stats"
     Share = "share"
     Language = "language"
+    Support = "support"
 
 
 # Command mappings for text commands
@@ -86,6 +87,7 @@ COMMAND_MAPPINGS = {
     "/delete_birthday": TCommand.DeleteBirthday,
     "/share": TCommand.Share,
     "/stats": TCommand.Stats,
+    "/support": TCommand.Support,
 }
 
 
@@ -101,6 +103,7 @@ def get_button_to_command_mapping(chat_id: int) -> dict:
         i18n.get_button_text("share", chat_id): TCommand.Share,
         i18n.get_button_text("stats", chat_id): TCommand.Stats,
         i18n.get_button_text("language", chat_id): TCommand.Language,
+        i18n.get_button_text("support", chat_id): TCommand.Support,
     }
 
 
@@ -130,6 +133,9 @@ def get_command_descriptions(chat_id: int) -> dict:
         ),
         i18n.get_button_text("stats", chat_id): i18n.get_button_description(
             "stats", chat_id
+        ),
+        i18n.get_button_text("support", chat_id): i18n.get_button_description(
+            "support", chat_id
         ),
     }
 
@@ -186,6 +192,9 @@ def get_reply_markup(message) -> InlineKeyboardMarkup | None:
         InlineKeyboardButton(
             i18n.get_button_text("language", chat_id), callback_data="language"
         ),
+        InlineKeyboardButton(
+            i18n.get_button_text("support", chat_id), callback_data="support"
+        ),
     ]
     for i in range(0, len(buttons), 2):
         markup.row(*buttons[i : (i + 2)])
@@ -199,6 +208,27 @@ def get_language_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton("🇬🇧 English", callback_data="lang_en"),
         InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
     )
+    return markup
+
+
+def get_support_keyboard(chat_id: int) -> InlineKeyboardMarkup:
+    """Create support keyboard with star amounts"""
+    markup = InlineKeyboardMarkup()
+    star_amounts = [50, 100, 250, 500, 1000]
+    buttons = []
+    for amount in star_amounts:
+        buttons.append(
+            InlineKeyboardButton(
+                i18n.get_message(f"stars_amount_{amount}", chat_id),
+                callback_data=f"support_pay_{amount}",
+            )
+        )
+    # Add buttons in rows of 2
+    for i in range(0, len(buttons), 2):
+        if i + 1 < len(buttons):
+            markup.row(buttons[i], buttons[i + 1])
+        else:
+            markup.row(buttons[i])
     return markup
 
 
@@ -496,6 +526,84 @@ def handle_language_callback(call):
     bot.answer_callback_query(call.id)
 
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith("support_pay_"))
+def handle_support_payment_callback(call):
+    """Handle payment button clicks"""
+    try:
+        amount = int(call.data.split("_")[2])
+        chat_id = call.message.chat.id
+
+        # Send invoice for digital goods and services
+        bot.send_invoice(
+            chat_id=chat_id,
+            title=i18n.get_message("payment_invoice_title", chat_id),
+            description=i18n.get_message("payment_invoice_description", chat_id),
+            invoice_payload=f"support_donation_{amount}",
+            provider_token="",  # Empty for Telegram Stars
+            currency="XTR",  # Telegram Stars currency
+            prices=[telebot.types.LabeledPrice(label="Support", amount=amount)],
+        )
+
+        bot.answer_callback_query(call.id)
+    except Exception as e:
+        logging.error(f"Error sending invoice: {e}")
+        utils.log_exception(e)
+        bot.answer_callback_query(
+            call.id, "❌ Error creating invoice. Please try again later."
+        )
+
+
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def handle_pre_checkout_query(pre_checkout_query):
+    """Handle pre-checkout queries for Telegram Stars payments"""
+    try:
+        # Always approve the order for digital goods
+        # You can add additional validation here if needed
+        bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+        logging.info(
+            f"Pre-checkout approved for user {pre_checkout_query.from_user.id}, "
+            f"amount: {pre_checkout_query.total_amount} {pre_checkout_query.currency}"
+        )
+    except Exception as e:
+        logging.error(f"Error in pre-checkout: {e}")
+        utils.log_exception(e)
+        # In case of error, reject with a message
+        bot.answer_pre_checkout_query(
+            pre_checkout_query.id,
+            ok=False,
+            error_message="Sorry, we couldn't process your payment. Please try again later.",
+        )
+
+
+@bot.message_handler(content_types=["successful_payment"])
+def handle_successful_payment(message):
+    """Handle successful payment notifications"""
+    try:
+        chat_id = message.chat.id
+        payment = message.successful_payment
+
+        # Log the payment
+        logging.info(
+            f"Successful payment from user {chat_id}: "
+            f"{payment.total_amount} {payment.currency}, "
+            f"invoice_payload: {payment.invoice_payload}, "
+            f"telegram_payment_charge_id: {payment.telegram_payment_charge_id}"
+        )
+
+        # Send thank you message
+        bot.send_message(
+            chat_id,
+            i18n.get_message("payment_success", chat_id, amount=payment.total_amount),
+            parse_mode="Markdown",
+        )
+
+        user_states[chat_id] = TUserState.Default
+
+    except Exception as e:
+        logging.error(f"Error handling successful payment: {e}")
+        utils.log_exception(e)
+
+
 def get_all_birthdays_formatted(chat_id: int, need_id: bool = False) -> str:
     all_birthdays = get_all_birthdays(chat_id, need_id)
 
@@ -564,7 +672,6 @@ def send_backup(message):
 
 
 def process_birthday_pings():
-    last_reset_date = None
     while True:
         minutes = 5
         time.sleep(minutes * 60)
@@ -573,12 +680,8 @@ def process_birthday_pings():
             continue
 
         try:
-            # Reset reminder flags once per day at midnight
-            current_date = datetime.now().date()
-            if last_reset_date != current_date:
-                db.reset_birthday_reminder_flags()
-                last_reset_date = current_date
-                logging.info("Daily reset of birthday reminder flags completed")
+            # Reset flags for birthdays that are far from current date
+            db.reset_birthday_reminder_flags()
 
             for days in REMINDED_DAYS:
                 upcoming_birthdays = db.get_upcoming_birthdays(days)
@@ -746,10 +849,26 @@ def handle_deletion(message):
     user_states[chat_id] = TUserState.AwaitingDeletion
 
 
+def handle_support(message):
+    """Handle support command - show donation options"""
+    chat_id = message.chat.id
+    bot.send_message(
+        chat_id,
+        i18n.get_message("support_description", chat_id),
+        reply_markup=get_support_keyboard(chat_id),
+        parse_mode="Markdown",
+    )
+    user_states[chat_id] = TUserState.Default
+
+
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback_query(call):
     # Skip if already handled by specific handlers
-    if call.data.startswith("reminder_") or call.data.startswith("lang_"):
+    if (
+        call.data.startswith("reminder_")
+        or call.data.startswith("lang_")
+        or call.data.startswith("support_pay_")
+    ):
         return
 
     message = call.message
@@ -766,6 +885,7 @@ def handle_callback_query(call):
         "stats": TCommand.Stats,
         "share": TCommand.Share,
         "language": TCommand.Language,
+        "support": TCommand.Support,
     }
 
     if call.data in command_mapping:
@@ -794,6 +914,8 @@ def handle_callback_query(call):
                 reply_markup=get_language_keyboard(),
                 parse_mode="Markdown",
             )
+        elif command == TCommand.Support:
+            handle_support(message)
         else:
             bot.answer_callback_query(
                 call.id, i18n.get_message("unknown_command", chat_id)
@@ -841,6 +963,9 @@ def handle_message(message):
         elif command == TCommand.Share:
             send_share_message(message)
             return
+        elif command == TCommand.Support:
+            handle_support(message)
+            return
 
     # Handle button texts in user's language
     button_mapping = get_button_to_command_mapping(chat_id)
@@ -869,6 +994,9 @@ def handle_message(message):
             return
         elif command == TCommand.Share:
             send_share_message(message)
+            return
+        elif command == TCommand.Support:
+            handle_support(message)
             return
 
     match user_states.get(chat_id):
