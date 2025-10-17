@@ -36,6 +36,10 @@
       "en": "🇬🇧🇷🇺 Language",
       "ru": "🇬🇧🇷🇺 Язык"
     },
+    "support": {
+      "en": "💝 Support Author",
+      "ru": "💝 Поддержать автора"
+    },
     "lang_english": {
       "en": "🇬🇧 English",
       "ru": "🇬🇧 English"
@@ -77,6 +81,10 @@
     "stats": {
       "en": "Get different statistics.",
       "ru": "Получить различную статистику."
+    },
+    "support": {
+      "en": "Support the author's work with Telegram Stars.",
+      "ru": "Поддержать работу автора через Telegram Stars."
     }
   },
   "messages": {
@@ -287,6 +295,50 @@
     "date_parse_error": {
       "en": "I couldn't parse the date '{date}' on line {line}. Please use one of the following formats:\n- day.month.year (e.g., 5.06.2001)\n- day.month (e.g., 5.06)\n- day.month age (e.g., 5.06 19)\nEnsure the date is valid and within the last 200 years.",
       "ru": "Не удалось разобрать дату '{date}' на строке {line}. Пожалуйста, используйте один из следующих форматов:\n- день.месяц.год (например, 5.06.2001)\n- день.месяц (например, 5.06)\n- день.месяц возраст (например, 5.06 19)\nУбедитесь, что дата действительна и в пределах последних 200 лет."
+    },
+    "support_title": {
+      "en": "💝 Support the Author",
+      "ru": "💝 Поддержите автора"
+    },
+    "support_description": {
+      "en": "If you find this bot helpful, you can support the author's work! Your support helps maintain and improve the bot.\n\n⭐️ Choose an amount to donate:",
+      "ru": "Если этот бот вам помогает, вы можете поддержать работу автора! Ваша поддержка помогает поддерживать и улучшать бота.\n\n⭐️ Выберите сумму для поддержки:"
+    },
+    "payment_invoice_title": {
+      "en": "Support Birthday Reminder Bot",
+      "ru": "Поддержать Birthday Reminder Bot"
+    },
+    "payment_invoice_description": {
+      "en": "Thank you for supporting the development of Birthday Reminder Bot! Your contribution helps keep the bot running and enables new features.",
+      "ru": "Спасибо за поддержку разработки Birthday Reminder Bot! Ваш вклад помогает боту работать и добавлять новые функции."
+    },
+    "payment_success": {
+      "en": "🎉 Thank you so much for your support!\n\nYour contribution of {amount} ⭐️ Telegram Stars is greatly appreciated and helps keep the bot running and improving.\n\n❤️ You're amazing!",
+      "ru": "🎉 Большое спасибо за вашу поддержку!\n\nВаш вклад в размере {amount} ⭐️ Telegram Stars очень ценен и помогает боту работать и становиться лучше.\n\n❤️ Вы потрясающие!"
+    },
+    "payment_cancelled": {
+      "en": "Payment was cancelled. If you change your mind, you can always support us later!",
+      "ru": "Платёж отменён. Если передумаете, вы всегда можете поддержать нас позже!"
+    },
+    "stars_amount_50": {
+      "en": "⭐️ 50 Stars",
+      "ru": "⭐️ 50 звёзд"
+    },
+    "stars_amount_100": {
+      "en": "⭐️ 100 Stars",
+      "ru": "⭐️ 100 звёзд"
+    },
+    "stars_amount_250": {
+      "en": "⭐️ 250 Stars",
+      "ru": "⭐️ 250 звёзд"
+    },
+    "stars_amount_500": {
+      "en": "⭐️ 500 Stars",
+      "ru": "⭐️ 500 звёзд"
+    },
+    "stars_amount_1000": {
+      "en": "⭐️ 1000 Stars",
+      "ru": "⭐️ 1000 звёзд"
     }
   },
   "month_names": {
