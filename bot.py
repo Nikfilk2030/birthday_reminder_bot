@@ -864,7 +864,11 @@ def handle_support(message):
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback_query(call):
     # Skip if already handled by specific handlers
-    if call.data.startswith("reminder_") or call.data.startswith("lang_") or call.data.startswith("support_pay_"):
+    if (
+        call.data.startswith("reminder_")
+        or call.data.startswith("lang_")
+        or call.data.startswith("support_pay_")
+    ):
         return
 
     message = call.message
