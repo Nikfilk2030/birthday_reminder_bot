@@ -324,14 +324,20 @@ def handle_stats(message):
 
     # Compute Age Statistics using the already given birthday strings.
     # Only birthdays with a full_date (i.e. %d %B %Y format) are considered.
-    avg_age_local, min_age_local, max_age_local, median_age_local = utils.compute_age_metrics(local_birthdays)
-    avg_age_global, min_age_global, max_age_global, median_age_global = utils.compute_age_metrics(
-        global_birthdays
+    avg_age_local, min_age_local, max_age_local, median_age_local = (
+        utils.compute_age_metrics(local_birthdays)
+    )
+    avg_age_global, min_age_global, max_age_global, median_age_global = (
+        utils.compute_age_metrics(global_birthdays)
     )
 
     # Find most popular dates (day + month)
-    most_popular_date_local, popular_date_count_local = utils.find_most_popular_date(local_birthdays)
-    most_popular_date_global, popular_date_count_global = utils.find_most_popular_date(global_birthdays)
+    most_popular_date_local, popular_date_count_local = utils.find_most_popular_date(
+        local_birthdays
+    )
+    most_popular_date_global, popular_date_count_global = utils.find_most_popular_date(
+        global_birthdays
+    )
 
     if avg_age_local is not None:
         local_age_stats = (

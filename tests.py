@@ -303,11 +303,11 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
 
         # Create tuple matching database result structure: (id, chat_id, name, birthday_str, has_year)
         select_result = (
-            1,                                      # id
-            123456,                                 # chat_id
-            "Test Person",                          # name
-            birth_date.strftime("%Y-%m-%d"),        # birthday as string
-            1                                        # has_year (1 = True)
+            1,  # id
+            123456,  # chat_id
+            "Test Person",  # name
+            birth_date.strftime("%Y-%m-%d"),  # birthday as string
+            1,  # has_year (1 = True)
         )
         birthday = db.TBirthday(select_result, need_id=False)
 
@@ -326,11 +326,11 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
         birth_date = datetime(current_year - 25, future_date.month, future_date.day)
 
         select_result = (
-            1,                                      # id
-            123456,                                 # chat_id
-            "Test Person",                          # name
-            birth_date.strftime("%Y-%m-%d"),        # birthday as string
-            1                                        # has_year (1 = True)
+            1,  # id
+            123456,  # chat_id
+            "Test Person",  # name
+            birth_date.strftime("%Y-%m-%d"),  # birthday as string
+            1,  # has_year (1 = True)
         )
         birthday = db.TBirthday(select_result, need_id=False)
 
@@ -345,11 +345,11 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
         birth_date = datetime(today.year, today.month, today.day)
 
         select_result = (
-            1,                                      # id
-            123456,                                 # chat_id
-            "Test Person",                          # name
-            birth_date.strftime("%Y-%m-%d"),        # birthday as string
-            0                                        # has_year (0 = False)
+            1,  # id
+            123456,  # chat_id
+            "Test Person",  # name
+            birth_date.strftime("%Y-%m-%d"),  # birthday as string
+            0,  # has_year (0 = False)
         )
         birthday = db.TBirthday(select_result, need_id=False)
 
@@ -364,11 +364,11 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
         birth_date = datetime(today.year - 25, today.month, today.day)
 
         select_result = (
-            42,                                     # id
-            123456,                                 # chat_id
-            "Test Person",                          # name
-            birth_date.strftime("%Y-%m-%d"),        # birthday as string
-            1                                        # has_year (1 = True)
+            42,  # id
+            123456,  # chat_id
+            "Test Person",  # name
+            birth_date.strftime("%Y-%m-%d"),  # birthday as string
+            1,  # has_year (1 = True)
         )
         birthday = db.TBirthday(select_result, need_id=True)
 
@@ -382,17 +382,42 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
         birth_date = datetime(today.year - 30, today.month, today.day)
 
         select_result = (
-            1,                                      # id
-            123456,                                 # chat_id
-            "Test Person",                          # name
-            birth_date.strftime("%Y-%m-%d"),        # birthday as string
-            1                                        # has_year (1 = True)
+            1,  # id
+            123456,  # chat_id
+            "Test Person",  # name
+            birth_date.strftime("%Y-%m-%d"),  # birthday as string
+            1,  # has_year (1 = True)
         )
         birthday = db.TBirthday(select_result, need_id=False)
 
         birthday_str = str(birthday)
         # On the exact birthday, they should be 30 (birthday has happened today)
         self.assertIn("30 years", birthday_str)
+
+    def test_leap_year_birthday_feb_29(self):
+        """Test that Feb 29 birthday is handled correctly in non-leap years"""
+        # Use a leap year for the birthday (2020 is a leap year)
+        birth_date = datetime(2020, 2, 29)
+
+        # Current year is 2025 (not a leap year), so Feb 29 doesn't exist
+        # Should use Feb 28 instead for comparison
+        select_result = (
+            1,  # id
+            123456,  # chat_id
+            "Leap Year Person",  # name
+            birth_date.strftime("%Y-%m-%d"),  # birthday as string
+            1,  # has_year (1 = True)
+        )
+
+        # This should not raise ValueError
+        birthday = db.TBirthday(select_result, need_id=False)
+        birthday_str = str(birthday)
+
+        # Should contain the birthday date and name
+        self.assertIn("29 February 2020", birthday_str)
+        self.assertIn("Leap Year Person", birthday_str)
+        # Should calculate age correctly (using Feb 28 for comparison)
+        self.assertIn("years", birthday_str)
 
 
 class TestMultipleBirthdayRegistration(unittest.TestCase):
@@ -1010,7 +1035,9 @@ class TestComputeAgeMetrics(unittest.TestCase):
 
         # Birthday already passed this year (should be current_year - birth_year)
         past_date = today - timedelta(days=30)
-        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+        past_birthday = (
+            f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+        )
 
         birthdays = [f"{past_birthday}, Test Person"]
         avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
@@ -1031,7 +1058,9 @@ class TestComputeAgeMetrics(unittest.TestCase):
 
         # Birthday hasn't happened yet this year (should be current_year - birth_year - 1)
         future_date = today + timedelta(days=30)
-        future_birthday = f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+        future_birthday = (
+            f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+        )
 
         birthdays = [f"{future_birthday}, Test Person"]
         avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
@@ -1052,10 +1081,14 @@ class TestComputeAgeMetrics(unittest.TestCase):
         current_year = today.year
 
         past_date = today - timedelta(days=30)
-        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+        past_birthday = (
+            f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+        )
 
         future_date = today + timedelta(days=30)
-        future_birthday = f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+        future_birthday = (
+            f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+        )
 
         birthdays = [
             f"{past_birthday}, Person 1",
@@ -1101,7 +1134,9 @@ class TestComputeAgeMetrics(unittest.TestCase):
         current_year = today.year
 
         past_date = today - timedelta(days=30)
-        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+        past_birthday = (
+            f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+        )
 
         birthdays = [
             f"{past_birthday}, Person 1",
@@ -1221,6 +1256,21 @@ class TestFindMostPopularDate(unittest.TestCase):
         self.assertIsNotNone(date)
         self.assertEqual(date, "1 January")
         self.assertEqual(count, 2)
+
+    def test_compute_age_metrics_with_leap_year_birthday(self):
+        """Test that compute_age_metrics handles Feb 29 birthdays correctly"""
+        # Use a leap year for the birthday
+        birthday = "29 February 2020, Leap Year Person"
+        birthdays = [birthday]
+
+        # This should not raise ValueError even if current year is not a leap year
+        avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
+
+        # Should compute metrics successfully
+        self.assertIsNotNone(avg)
+        self.assertIsNotNone(min_val)
+        self.assertIsNotNone(max_val)
+        self.assertIsNotNone(median)
 
 
 if __name__ == "__main__":

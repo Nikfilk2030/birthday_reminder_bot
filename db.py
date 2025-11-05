@@ -48,6 +48,30 @@ class TBackupPingSettings:
         )
 
 
+def _safe_replace_year(date: datetime, new_year: int) -> datetime:
+    """
+    Safely replace the year in a date, handling leap year edge cases.
+
+    If the date is February 29th and the new year is not a leap year,
+    returns February 28th of the new year instead.
+
+    Args:
+        date: The original date
+        new_year: The year to replace
+
+    Returns:
+        A new datetime with the replaced year (or Feb 28 if Feb 29 -> non-leap year)
+    """
+    try:
+        return date.replace(year=new_year)
+    except ValueError:
+        # This happens when date is Feb 29 and new_year is not a leap year
+        # Return Feb 28 of the new year instead
+        if date.month == 2 and date.day == 29:
+            return datetime(new_year, 2, 28)
+        raise
+
+
 class TBirthday:
     def __init__(self, select_result: tuple, need_id: bool = False):
         self.need_id = need_id
@@ -73,7 +97,8 @@ class TBirthday:
             current_year = datetime.now().year
             age = current_year - self.birthday.year
             # Check if birthday hasn't happened yet this year
-            birthday_this_year = self.birthday.replace(year=current_year)
+            # Handle leap year edge case (Feb 29 -> non-leap year)
+            birthday_this_year = _safe_replace_year(self.birthday, current_year)
             if datetime.now() < birthday_this_year:
                 age -= 1
             age_text = f", _(Current age: {age} years)_"

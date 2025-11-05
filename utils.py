@@ -243,7 +243,9 @@ def cleanup_old_logs(log_dir=".", max_days=30):
                     logging.error(f"Failed to delete old log file {filename}: {e}")
 
 
-def compute_age_metrics(birthday_strings: list[str]) -> tuple[float | None, int | None, int | None, float | None]:
+def compute_age_metrics(
+    birthday_strings: list[str],
+) -> tuple[float | None, int | None, int | None, float | None]:
     """
     Compute age statistics from birthday strings.
 
@@ -271,7 +273,17 @@ def compute_age_metrics(birthday_strings: list[str]) -> tuple[float | None, int 
             date_dt = datetime.strptime(date_str, "%d %B %Y")
 
             # Compute age and adjust if birthday hasn't taken place yet this year
-            birthday_this_year = date_dt.replace(year=current_year)
+            # Handle leap year edge case (Feb 29 -> non-leap year)
+            try:
+                birthday_this_year = date_dt.replace(year=current_year)
+            except ValueError:
+                # This happens when date is Feb 29 and current_year is not a leap year
+                # Use Feb 28 of current year instead
+                if date_dt.month == 2 and date_dt.day == 29:
+                    birthday_this_year = datetime(current_year, 2, 28)
+                else:
+                    raise
+
             age = current_year - date_dt.year
             if now < birthday_this_year:
                 age -= 1
