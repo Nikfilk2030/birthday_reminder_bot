@@ -173,10 +173,16 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
             if age <= 0:
                 return False, None, False
 
-            if day != datetime.now().day and month != datetime.now().month:
-                age += 1
+            # Check if birthday has already happened this year
+            today = datetime.now()
+            birthday_this_year = datetime(current_year, month, day)
+            if birthday_this_year > today:
+                # Birthday hasn't happened yet this year, so they will turn (age+1) this year
+                birth_year = current_year - age - 1
+            else:
+                # Birthday already happened this year, so they turned (age) this year
+                birth_year = current_year - age
 
-            birth_year = current_year - age
             # Check if date is too far in the past (more than 200 years)
             if current_year - birth_year > 200:
                 return False, None, False

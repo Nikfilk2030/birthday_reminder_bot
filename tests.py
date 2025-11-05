@@ -56,10 +56,33 @@ class TestParseDate(unittest.TestCase):
 
     def test_valid_dates_with_age(self):
         current_year = datetime.now().year
+        today = datetime.now()
+
+        # Test with a birthday that has already passed this year
+        # If today is after June 5th, person aged 19 was born in (current_year - 19)
+        # If today is before June 5th, person aged 19 will turn 20 this year, born in (current_year - 20)
+        birthday_passed = datetime(current_year, 6, 5)
+        if today > birthday_passed:
+            expected_year = current_year - 19
+        else:
+            expected_year = current_year - 20
         self.assertEqual(
-            parse_date("5.06 19"), (True, datetime(current_year - 20, 6, 5), True)
+            parse_date("5.06 19"), (True, datetime(expected_year, 6, 5), True)
         )
+
+        # Test with age 0 (should be invalid)
         self.assertEqual(parse_date("15.08 0"), (False, None, False))
+
+        # Test with a birthday far in the future this year
+        # Person aged 25, birthday on December 31st
+        future_birthday = datetime(current_year, 12, 31)
+        if today > future_birthday:
+            expected_year_dec = current_year - 25
+        else:
+            expected_year_dec = current_year - 26
+        self.assertEqual(
+            parse_date("31.12 25"), (True, datetime(expected_year_dec, 12, 31), True)
+        )
 
     def test_invalid_dates(self):
         self.assertEqual(parse_date("32.12.2001"), (False, None, False))  # Invalid day
