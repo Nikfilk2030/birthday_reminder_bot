@@ -291,6 +291,110 @@ class TestBackupPingSettings(unittest.TestCase):
         self.assertEqual(settings.update_timedelta, 60)
 
 
+class TestBirthdayAgeCalculation(unittest.TestCase):
+    def test_age_calculation_with_past_birthday(self):
+        """Test that age is calculated correctly for birthdays that already happened this year"""
+        today = datetime.now()
+        current_year = today.year
+
+        # Birthday already passed this year (30 days ago)
+        past_date = today - timedelta(days=30)
+        birth_date = datetime(current_year - 25, past_date.month, past_date.day)
+
+        # Create tuple matching database result structure: (id, chat_id, name, birthday_str, has_year)
+        select_result = (
+            1,                                      # id
+            123456,                                 # chat_id
+            "Test Person",                          # name
+            birth_date.strftime("%Y-%m-%d"),        # birthday as string
+            1                                        # has_year (1 = True)
+        )
+        birthday = db.TBirthday(select_result, need_id=False)
+
+        birthday_str = str(birthday)
+        # Should show age 25 (birthday already happened)
+        self.assertIn("25 years", birthday_str)
+        self.assertIn("Test Person", birthday_str)
+
+    def test_age_calculation_with_future_birthday(self):
+        """Test that age is calculated correctly for birthdays that haven't happened yet"""
+        today = datetime.now()
+        current_year = today.year
+
+        # Birthday hasn't happened yet this year (30 days from now)
+        future_date = today + timedelta(days=30)
+        birth_date = datetime(current_year - 25, future_date.month, future_date.day)
+
+        select_result = (
+            1,                                      # id
+            123456,                                 # chat_id
+            "Test Person",                          # name
+            birth_date.strftime("%Y-%m-%d"),        # birthday as string
+            1                                        # has_year (1 = True)
+        )
+        birthday = db.TBirthday(select_result, need_id=False)
+
+        birthday_str = str(birthday)
+        # Should show age 24 (birthday hasn't happened yet, so still 24)
+        self.assertIn("24 years", birthday_str)
+        self.assertIn("Test Person", birthday_str)
+
+    def test_birthday_without_year(self):
+        """Test that birthdays without year don't show age"""
+        today = datetime.now()
+        birth_date = datetime(today.year, today.month, today.day)
+
+        select_result = (
+            1,                                      # id
+            123456,                                 # chat_id
+            "Test Person",                          # name
+            birth_date.strftime("%Y-%m-%d"),        # birthday as string
+            0                                        # has_year (0 = False)
+        )
+        birthday = db.TBirthday(select_result, need_id=False)
+
+        birthday_str = str(birthday)
+        # Should not show age
+        self.assertNotIn("years", birthday_str)
+        self.assertIn("Test Person", birthday_str)
+
+    def test_birthday_with_id(self):
+        """Test that ID is shown when needed"""
+        today = datetime.now()
+        birth_date = datetime(today.year - 25, today.month, today.day)
+
+        select_result = (
+            42,                                     # id
+            123456,                                 # chat_id
+            "Test Person",                          # name
+            birth_date.strftime("%Y-%m-%d"),        # birthday as string
+            1                                        # has_year (1 = True)
+        )
+        birthday = db.TBirthday(select_result, need_id=True)
+
+        birthday_str = str(birthday)
+        self.assertIn("ID: 42", birthday_str)
+        self.assertIn("Test Person", birthday_str)
+
+    def test_age_on_exact_birthday(self):
+        """Test age calculation on the exact birthday"""
+        today = datetime.now()
+        birth_date = datetime(today.year - 30, today.month, today.day)
+
+        select_result = (
+            1,                                      # id
+            123456,                                 # chat_id
+            "Test Person",                          # name
+            birth_date.strftime("%Y-%m-%d"),        # birthday as string
+            1                                        # has_year (1 = True)
+        )
+        birthday = db.TBirthday(select_result, need_id=False)
+
+        birthday_str = str(birthday)
+        # On the exact birthday, they should be 30 (birthday has happened today)
+        self.assertIn("30 years", birthday_str)
+
+
 class TestMultipleBirthdayRegistration(unittest.TestCase):
     def setUp(self):
         self.test_chat_id = 123456789
@@ -898,55 +1002,225 @@ class TestInternationalization(unittest.TestCase):
         self.assertIn("incomplete", error_message_en.lower())
 
 
-def test_compute_age_metrics():
-    # Setup test data with different formats
-    today = datetime.now()
-    current_year = today.year
+class TestComputeAgeMetrics(unittest.TestCase):
+    def test_compute_age_with_past_birthday(self):
+        """Test age computation for birthdays that already happened this year"""
+        today = datetime.now()
+        current_year = today.year
 
-    # Birthday already passed this year (should be current_year - birth_year)
-    past_date = today - timedelta(days=30)
-    past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+        # Birthday already passed this year (should be current_year - birth_year)
+        past_date = today - timedelta(days=30)
+        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
 
-    # Birthday hasn't happened yet this year (should be current_year - birth_year - 1)
-    future_date = today + timedelta(days=30)
-    future_birthday = (
-        f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
-    )
+        birthdays = [f"{past_birthday}, Test Person"]
+        avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
 
-    # Invalid formats to test error handling
-    invalid_birthday = "Not a date"
-    missing_year = "15 January"
+        self.assertIsNotNone(avg)
+        self.assertIsNotNone(min_val)
+        self.assertIsNotNone(max_val)
+        self.assertIsNotNone(median)
+        self.assertEqual(avg, 25)
+        self.assertEqual(min_val, 25)
+        self.assertEqual(max_val, 25)
+        self.assertEqual(median, 25.0)
 
-    # Test with various combinations
-    test_cases = [
-        # Valid birthdays that have passed this year
-        [f"{past_birthday}, Test Person"],
-        # Valid birthdays that haven't happened yet
-        [f"{future_birthday}, Test Person"],
-        # Mix of valid and invalid
-        [
+    def test_compute_age_with_future_birthday(self):
+        """Test age computation for birthdays that haven't happened yet this year"""
+        today = datetime.now()
+        current_year = today.year
+
+        # Birthday hasn't happened yet this year (should be current_year - birth_year - 1)
+        future_date = today + timedelta(days=30)
+        future_birthday = f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+
+        birthdays = [f"{future_birthday}, Test Person"]
+        avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
+
+        self.assertIsNotNone(avg)
+        self.assertIsNotNone(min_val)
+        self.assertIsNotNone(max_val)
+        self.assertIsNotNone(median)
+        # They haven't had their birthday yet, so they're still 29
+        self.assertEqual(avg, 29)
+        self.assertEqual(min_val, 29)
+        self.assertEqual(max_val, 29)
+        self.assertEqual(median, 29.0)
+
+    def test_compute_age_with_mixed_birthdays(self):
+        """Test age computation with multiple birthdays"""
+        today = datetime.now()
+        current_year = today.year
+
+        past_date = today - timedelta(days=30)
+        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+
+        future_date = today + timedelta(days=30)
+        future_birthday = f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+
+        birthdays = [
             f"{past_birthday}, Person 1",
             f"{future_birthday}, Person 2",
-            invalid_birthday,
-        ],
-        # Empty list
-        [],
-        # List with only invalid entries
-        [invalid_birthday, missing_year],
-    ]
+        ]
 
-    for birthdays in test_cases:
-        avg, min_val, max_val = utils.compute_age_metrics(birthdays)
-        if any("Test Person" in b for b in birthdays):
-            # At least one valid birthday with year
-            assert avg is not None
-            assert min_val is not None
-            assert max_val is not None
-        else:
-            # No valid birthdays
-            assert avg is None
-            assert min_val is None
-            assert max_val is None
+        avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
+
+        self.assertIsNotNone(avg)
+        self.assertIsNotNone(min_val)
+        self.assertIsNotNone(max_val)
+        self.assertIsNotNone(median)
+        self.assertEqual(min_val, 25)  # Youngest person (birthday already happened)
+        self.assertEqual(max_val, 29)  # Oldest person (birthday not yet happened)
+        self.assertEqual(avg, (25 + 29) / 2)
+        self.assertEqual(median, (25 + 29) / 2.0)  # Median of [25, 29] is 27
+
+    def test_compute_age_with_invalid_formats(self):
+        """Test that invalid birthday formats are handled gracefully"""
+        invalid_birthday = "Not a date"
+        missing_year = "15 January"
+
+        birthdays = [invalid_birthday, missing_year]
+        avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
+
+        self.assertIsNone(avg)
+        self.assertIsNone(min_val)
+        self.assertIsNone(max_val)
+        self.assertIsNone(median)
+
+    def test_compute_age_with_empty_list(self):
+        """Test that empty list returns None values"""
+        avg, min_val, max_val, median = utils.compute_age_metrics([])
+
+        self.assertIsNone(avg)
+        self.assertIsNone(min_val)
+        self.assertIsNone(max_val)
+        self.assertIsNone(median)
+
+    def test_compute_age_with_mixed_valid_invalid(self):
+        """Test that valid birthdays are processed even with invalid ones present"""
+        today = datetime.now()
+        current_year = today.year
+
+        past_date = today - timedelta(days=30)
+        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
+
+        birthdays = [
+            f"{past_birthday}, Person 1",
+            "Not a date",
+            "15 January",  # No year
+        ]
+
+        avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
+
+        # Should compute metrics for the one valid birthday
+        self.assertIsNotNone(avg)
+        self.assertEqual(avg, 25)
+        self.assertEqual(min_val, 25)
+        self.assertEqual(max_val, 25)
+        self.assertEqual(median, 25.0)
+
+
+class TestFindMostPopularDate(unittest.TestCase):
+    def test_find_most_popular_date_with_single_date(self):
+        """Test finding most popular date with single occurrence"""
+        today = datetime.now()
+        current_year = today.year
+
+        birthday = f"15 January {current_year - 25}, Test Person"
+        birthdays = [birthday]
+
+        date, count = utils.find_most_popular_date(birthdays)
+
+        self.assertIsNotNone(date)
+        self.assertEqual(date, "15 January")
+        self.assertEqual(count, 1)
+
+    def test_find_most_popular_date_with_multiple_same_date(self):
+        """Test finding most popular date when multiple people share the same date"""
+        today = datetime.now()
+        current_year = today.year
+
+        birthdays = [
+            f"1 January {current_year - 25}, Person 1",
+            f"1 January {current_year - 30}, Person 2",
+            f"1 January {current_year - 20}, Person 3",
+            f"15 March {current_year - 25}, Person 4",
+        ]
+
+        date, count = utils.find_most_popular_date(birthdays)
+
+        self.assertIsNotNone(date)
+        self.assertEqual(date, "1 January")
+        self.assertEqual(count, 3)
+
+    def test_find_most_popular_date_without_year(self):
+        """Test finding most popular date with birthdays that don't have year"""
+        birthdays = [
+            "1 January, Person 1",
+            "1 January, Person 2",
+            "15 March, Person 3",
+        ]
+
+        date, count = utils.find_most_popular_date(birthdays)
+
+        self.assertIsNotNone(date)
+        self.assertEqual(date, "1 January")
+        self.assertEqual(count, 2)
+
+    def test_find_most_popular_date_with_tie(self):
+        """Test finding most popular date when there's a tie (should return one of them)"""
+        today = datetime.now()
+        current_year = today.year
+
+        birthdays = [
+            f"1 January {current_year - 25}, Person 1",
+            f"1 January {current_year - 30}, Person 2",
+            f"15 March {current_year - 25}, Person 3",
+            f"15 March {current_year - 20}, Person 4",
+        ]
+
+        date, count = utils.find_most_popular_date(birthdays)
+
+        # Should return one of the tied dates
+        self.assertIsNotNone(date)
+        self.assertIn(date, ["1 January", "15 March"])
+        self.assertEqual(count, 2)
+
+    def test_find_most_popular_date_with_empty_list(self):
+        """Test finding most popular date with empty list"""
+        date, count = utils.find_most_popular_date([])
+
+        self.assertIsNone(date)
+        self.assertEqual(count, 0)
+
+    def test_find_most_popular_date_with_invalid_formats(self):
+        """Test finding most popular date with invalid formats"""
+        birthdays = [
+            "Not a date, Person 1",
+            "Invalid format",
+        ]
+
+        date, count = utils.find_most_popular_date(birthdays)
+
+        self.assertIsNone(date)
+        self.assertEqual(count, 0)
+
+    def test_find_most_popular_date_mixed_valid_invalid(self):
+        """Test that valid dates are processed even with invalid ones"""
+        today = datetime.now()
+        current_year = today.year
+
+        birthdays = [
+            f"1 January {current_year - 25}, Person 1",
+            f"1 January {current_year - 30}, Person 2",
+            "Not a date, Person 3",
+            "Invalid format",
+        ]
+
+        date, count = utils.find_most_popular_date(birthdays)
+
+        self.assertIsNotNone(date)
+        self.assertEqual(date, "1 January")
+        self.assertEqual(count, 2)
 
 
 if __name__ == "__main__":

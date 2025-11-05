@@ -72,7 +72,9 @@ class TBirthday:
         if self.has_year:
             current_year = datetime.now().year
             age = current_year - self.birthday.year
-            if datetime.now().replace(year=self.birthday.year) < self.birthday:
+            # Check if birthday hasn't happened yet this year
+            birthday_this_year = self.birthday.replace(year=current_year)
+            if datetime.now() < birthday_this_year:
                 age -= 1
             age_text = f", _(Current age: {age} years)_"
 
