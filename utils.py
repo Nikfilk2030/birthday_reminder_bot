@@ -173,10 +173,16 @@ def parse_date(date_str: str) -> tuple[bool, datetime | None, bool]:
             if age <= 0:
                 return False, None, False
 
-            if day != datetime.now().day and month != datetime.now().month:
-                age += 1
+            # Check if birthday has already happened this year
+            today = datetime.now()
+            birthday_this_year = datetime(current_year, month, day)
+            if birthday_this_year > today:
+                # Birthday hasn't happened yet this year, so they will turn (age+1) this year
+                birth_year = current_year - age - 1
+            else:
+                # Birthday already happened this year, so they turned (age) this year
+                birth_year = current_year - age
 
-            birth_year = current_year - age
             # Check if date is too far in the past (more than 200 years)
             if current_year - birth_year > 200:
                 return False, None, False
@@ -235,6 +241,122 @@ def cleanup_old_logs(log_dir=".", max_days=30):
                     logging.info(f"Deleted old log file: {filename}")
                 except Exception as e:
                     logging.error(f"Failed to delete old log file {filename}: {e}")
+
+
+def compute_age_metrics(
+    birthday_strings: list[str],
+) -> tuple[float | None, int | None, int | None, float | None]:
+    """
+    Compute age statistics from birthday strings.
+
+    Args:
+        birthday_strings: List of birthday strings in format "DD Month YYYY, Name"
+
+    Returns:
+        Tuple of (average_age, min_age, max_age, median_age) or (None, None, None, None) if no valid birthdays
+    """
+    ages = []
+    now = datetime.now()
+    current_year = now.year
+
+    for birthday in birthday_strings:
+        if not birthday or not isinstance(birthday, str):
+            continue
+        try:
+            # Extract the date part safely
+            parts = birthday.split(",", 1)
+            if not parts:
+                continue
+            date_str = parts[0].strip()
+
+            # Will work only if the date contains a full year
+            date_dt = datetime.strptime(date_str, "%d %B %Y")
+
+            # Compute age and adjust if birthday hasn't taken place yet this year
+            # Handle leap year edge case (Feb 29 -> non-leap year)
+            try:
+                birthday_this_year = date_dt.replace(year=current_year)
+            except ValueError:
+                # This happens when date is Feb 29 and current_year is not a leap year
+                # Use Feb 28 of current year instead
+                if date_dt.month == 2 and date_dt.day == 29:
+                    birthday_this_year = datetime(current_year, 2, 28)
+                else:
+                    raise
+
+            age = current_year - date_dt.year
+            if now < birthday_this_year:
+                age -= 1
+            ages.append(age)
+        except (ValueError, IndexError):
+            continue  # Skip birthdays with errors
+
+    if ages:
+        sorted_ages = sorted(ages)
+        avg_age = sum(ages) / len(ages)
+        min_age = min(ages)
+        max_age = max(ages)
+
+        # Calculate median
+        n = len(sorted_ages)
+        if n % 2 == 0:
+            # If even number of ages, median is average of two middle values
+            median_age = (sorted_ages[n // 2 - 1] + sorted_ages[n // 2]) / 2.0
+        else:
+            # If odd number of ages, median is the middle value
+            median_age = float(sorted_ages[n // 2])
+
+        return avg_age, min_age, max_age, median_age
+    return None, None, None, None
+
+
+def find_most_popular_date(birthday_strings: list[str]) -> tuple[str | None, int]:
+    """
+    Find the most popular date (day + month) from birthday strings.
+
+    Args:
+        birthday_strings: List of birthday strings in format "DD Month YYYY, Name" or "DD Month, Name"
+
+    Returns:
+        Tuple of (most_popular_date_str, count) or (None, 0) if no valid birthdays
+        Date format: "DD Month" (e.g., "1 January")
+    """
+    date_counts = {}
+
+    for birthday in birthday_strings:
+        if not birthday or not isinstance(birthday, str):
+            continue
+        try:
+            # Extract the date part safely
+            parts = birthday.split(",", 1)
+            if not parts:
+                continue
+            date_str = parts[0].strip()
+
+            # Try parsing with year first
+            try:
+                date_dt = datetime.strptime(date_str, "%d %B %Y")
+            except ValueError:
+                # Try without year
+                try:
+                    date_dt = datetime.strptime(date_str, "%d %B")
+                except ValueError:
+                    continue
+
+            # Format as "D Month" or "DD Month" (e.g., "1 January" or "15 January")
+            # Remove leading zero from day
+            day = date_dt.day
+            month = date_dt.strftime("%B")
+            date_key = f"{day} {month}"
+
+            date_counts[date_key] = date_counts.get(date_key, 0) + 1
+        except (ValueError, IndexError):
+            continue  # Skip birthdays with errors
+
+    if date_counts:
+        most_popular_date, count = max(date_counts.items(), key=lambda x: x[1])
+        return most_popular_date, count
+    return None, 0
 
 
 def split_message(message: str, max_length: int = 4096) -> list[str]:

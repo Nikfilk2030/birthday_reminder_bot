@@ -324,41 +324,18 @@ def handle_stats(message):
 
     # Compute Age Statistics using the already given birthday strings.
     # Only birthdays with a full_date (i.e. %d %B %Y format) are considered.
-    def compute_age_metrics(birthday_strings: list[str]):
-        ages = []
-        now = datetime.now()
-        current_year = now.year
-        for birthday in birthday_strings:
-            if not birthday or not isinstance(birthday, str):
-                continue
-            try:
-                # Extract the date part safely
-                parts = birthday.split(",", 1)
-                if not parts:
-                    continue
-                date_str = parts[0].strip()
+    avg_age_local, min_age_local, max_age_local, median_age_local = (
+        utils.compute_age_metrics(local_birthdays)
+    )
+    avg_age_global, min_age_global, max_age_global, median_age_global = (
+        utils.compute_age_metrics(global_birthdays)
+    )
 
-                # Will work only if the date contains a full year
-                date_dt = datetime.strptime(date_str, "%d %B %Y")
-
-                # Compute age and adjust if birthday hasn't taken place yet this year
-                birthday_this_year = date_dt.replace(year=current_year)
-                age = current_year - date_dt.year
-                if now < birthday_this_year:
-                    age -= 1
-                ages.append(age)
-            except (ValueError, IndexError):
-                continue  # Skip birthdays with errors
-
-        if ages:
-            avg_age = sum(ages) / len(ages)
-            min_age = min(ages)
-            max_age = max(ages)
-            return avg_age, min_age, max_age
-        return None, None, None
-
-    avg_age_local, min_age_local, max_age_local = compute_age_metrics(local_birthdays)
-    avg_age_global, min_age_global, max_age_global = compute_age_metrics(
+    # Find most popular dates (day + month)
+    most_popular_date_local, popular_date_count_local = utils.find_most_popular_date(
+        local_birthdays
+    )
+    most_popular_date_global, popular_date_count_global = utils.find_most_popular_date(
         global_birthdays
     )
 
@@ -366,6 +343,7 @@ def handle_stats(message):
         local_age_stats = (
             f"• Age Statistics:\n"
             f"   - Average Age: {avg_age_local:.1f}\n"
+            f"   - Median Age: {median_age_local:.1f}\n"
             f"   - Minimum Age: {min_age_local}\n"
             f"   - Maximum Age: {max_age_local}\n"
         )
@@ -376,6 +354,7 @@ def handle_stats(message):
         global_age_stats = (
             f"• Age Statistics:\n"
             f"   - Average Age: {avg_age_global:.1f}\n"
+            f"   - Median Age: {median_age_global:.1f}\n"
             f"   - Minimum Age: {min_age_global}\n"
             f"   - Maximum Age: {max_age_global}\n"
         )
@@ -383,20 +362,34 @@ def handle_stats(message):
         global_age_stats = "• Age Statistics: N/A (no birthdays with full date)\n"
 
     # Assemble the local statistics.
+    local_popular_date_str = ""
+    if most_popular_date_local:
+        local_popular_date_str = f"• Most Popular Date: {most_popular_date_local} ({popular_date_count_local} birthdays)\n"
+    else:
+        local_popular_date_str = "• Most Popular Date: N/A\n"
+
     local_stats = (
         "📍 *Local Statistics:*\n\n"
         f"• Total Birthdays in this Chat: {total_birthdays_for_this_chat}\n"
         f"• Birthdays in this Month: {total_birthdays_this_month}\n"
         f"• Most Popular Birthday Month: {local_most_popular_month} ({local_count} birthdays)\n"
+        f"{local_popular_date_str}"
         f"{local_age_stats}"
     )
 
     # Assemble the global statistics.
+    global_popular_date_str = ""
+    if most_popular_date_global:
+        global_popular_date_str = f"• Most Popular Date: {most_popular_date_global} ({popular_date_count_global} birthdays)\n"
+    else:
+        global_popular_date_str = "• Most Popular Date: N/A\n"
+
     global_stats = (
         "🌐 *Global Statistics:*\n\n"
         f"• Total Birthdays in All Chats: {total_birthdays_for_all_chats}\n"
         f"• Total Users: {total_users}\n"
         f"• Most Popular Birthday Month: {global_most_popular_month} ({global_count} birthdays)\n"
+        f"{global_popular_date_str}"
         f"{global_age_stats}"
     )
 
