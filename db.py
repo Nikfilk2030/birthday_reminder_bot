@@ -483,6 +483,12 @@ def reset_birthday_reminder_flags() -> None:
                 was_reminded_3_days_ago = FALSE,
                 was_reminded_7_days_ago = FALSE
             WHERE (
+                was_reminded_0_days_ago = TRUE
+                OR was_reminded_1_days_ago = TRUE
+                OR was_reminded_3_days_ago = TRUE
+                OR was_reminded_7_days_ago = TRUE
+            )
+            AND (
                 -- Case 1: Birthday is more than 10 days in the past
                 (
                     strftime('%m-%d', birthday) < strftime('%m-%d', date('now', '-10 days'))
@@ -502,10 +508,10 @@ def reset_birthday_reminder_flags() -> None:
         cursor.execute(query)
         rows_affected = cursor.rowcount
         conn.commit()
-        conn.close()
 
         if rows_affected > 0:
             logging.info(f"Reset reminder flags for {rows_affected} birthdays")
+        conn.close()
 
     except sqlite3.Error as e:
         logging.error(f"Error resetting birthday reminder flags: {e}")
