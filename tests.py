@@ -234,6 +234,112 @@ class TestDatabase(unittest.TestCase):
         settings = db.select_from_backup_ping(self.test_chat_id)
         self.assertFalse(settings.is_active)
 
+    def test_inactive_users_cleanup(self):
+        test_chat_id_1 = 111111111
+        test_chat_id_2 = 222222222
+        test_chat_id_3 = 333333333
+
+        old_date = datetime.now() - timedelta(days=60)
+        old_date_str = old_date.strftime("%Y-%m-%d %H:%M:%S")
+
+        conn = sqlite3.connect(db.DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO user_reminder_settings (chat_id, reminder_days, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (test_chat_id_1, "0,1,3,7", old_date_str),
+        )
+        cursor.execute(
+            """
+            INSERT INTO user_reminder_settings (chat_id, reminder_days, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (test_chat_id_2, "0,1,3,7", old_date_str),
+        )
+        cursor.execute(
+            """
+            INSERT INTO user_reminder_settings (chat_id, reminder_days, created_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            """,
+            (test_chat_id_3, "0,1,3,7"),
+        )
+
+        conn.commit()
+        conn.close()
+
+        db.register_birthday(test_chat_id_1, "Test", datetime(1990, 1, 1), True)
+
+        stats = db.get_inactive_users_count(days_threshold=30)
+        self.assertGreaterEqual(stats.get("users_without_birthdays", 0), 2)
+        self.assertGreaterEqual(stats.get("inactive_users", 0), 1)
+
+        inactive = db.get_inactive_users(days_threshold=30)
+        self.assertIn(test_chat_id_2, inactive)
+        self.assertNotIn(test_chat_id_1, inactive)
+        self.assertNotIn(test_chat_id_3, inactive)
+
+        result = db.cleanup_inactive_users(days_threshold=30, dry_run=True)
+        self.assertEqual(result["users_deleted"], 0)
+        self.assertGreaterEqual(result["users_to_delete"], 1)
+
+        deleted = db.delete_inactive_users([test_chat_id_2])
+        self.assertEqual(deleted, 1)
+
+        settings = db.get_reminder_settings(test_chat_id_2)
+        self.assertEqual(settings, [])
+
+        inactive_after = db.get_inactive_users(days_threshold=30)
+        self.assertNotIn(test_chat_id_2, inactive_after)
+
+    def test_cleanup_inactive_users_execute(self):
+        test_chat_id_1 = 444444444
+        test_chat_id_2 = 555555555
+
+        old_date = datetime.now() - timedelta(days=60)
+        old_date_str = old_date.strftime("%Y-%m-%d %H:%M:%S")
+
+        conn = sqlite3.connect(db.DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO user_reminder_settings (chat_id, reminder_days, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (test_chat_id_1, "0,1,3,7", old_date_str),
+        )
+        cursor.execute(
+            """
+            INSERT INTO user_reminder_settings (chat_id, reminder_days, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (test_chat_id_2, "0,1,3,7", old_date_str),
+        )
+        cursor.execute(
+            """
+            INSERT INTO user_language_settings (chat_id, language_code, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (test_chat_id_2, "ru", old_date_str),
+        )
+
+        conn.commit()
+        conn.close()
+
+        result = db.cleanup_inactive_users(days_threshold=30, dry_run=False)
+        self.assertGreaterEqual(result["users_deleted"], 2)
+
+        settings_1 = db.get_reminder_settings(test_chat_id_1)
+        settings_2 = db.get_reminder_settings(test_chat_id_2)
+        self.assertEqual(settings_1, [])
+        self.assertEqual(settings_2, [])
+
+        language = db.get_user_language(test_chat_id_2)
+        self.assertEqual(language, "en")
+
 
 class TestUtils(unittest.TestCase):
     def test_is_daytime(self):

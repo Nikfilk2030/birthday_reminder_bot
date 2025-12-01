@@ -74,6 +74,7 @@ class TCommand(enum.Enum):
     Share = "share"
     Language = "language"
     Support = "support"
+    CleanupUsers = "cleanup_users"
 
 
 # Command mappings for text commands
@@ -88,6 +89,7 @@ COMMAND_MAPPINGS = {
     "/share": TCommand.Share,
     "/stats": TCommand.Stats,
     "/support": TCommand.Support,
+    "/cleanup_users": TCommand.CleanupUsers,
 }
 
 
@@ -402,6 +404,54 @@ def handle_stats(message):
     )
 
     user_states[chat_id] = TUserState.Default
+
+
+def handle_cleanup_users(message):
+    chat_id = message.chat.id
+
+    try:
+        dry_run = True
+        days_threshold = 30
+
+        if message.text:
+            command_parts = message.text.split()
+            if "--execute" in command_parts:
+                dry_run = False
+            if "--days" in command_parts:
+                idx = command_parts.index("--days")
+                if idx + 1 < len(command_parts):
+                    try:
+                        days_threshold = int(command_parts[idx + 1])
+                    except ValueError:
+                        bot.send_message(
+                            chat_id,
+                            "❌ Invalid days value. Using default: 30 days.",
+                            parse_mode="Markdown",
+                        )
+
+        stats = db.cleanup_inactive_users(
+            days_threshold=days_threshold, dry_run=dry_run
+        )
+
+        mode_text = "DRY RUN" if dry_run else "EXECUTED"
+        result_message = f"""
+🧹 User Cleanup Analysis ({mode_text})
+
+📊 Statistics:
+• Total registered users: {stats.get('total_registered', 0)}
+• Users without birthdays: {stats.get('users_without_birthdays', 0)}
+• Inactive users (>={stats.get('days_threshold', 30)} days): {stats.get('inactive_users', 0)}
+• Users to delete: {stats.get('users_to_delete', 0)}
+• Users deleted: {stats.get('users_deleted', 0)}
+
+{"⚠️ This was a dry run. Use /cleanup_users --execute to actually delete." if dry_run else "✅ Cleanup completed!"}
+        """
+
+        bot.send_message(chat_id, result_message, parse_mode="Markdown")
+
+    except Exception as e:
+        logging.error(f"Error in cleanup_users command: {e}")
+        bot.send_message(chat_id, f"❌ Error: {str(e)}")
 
 
 def handle_start(message):
@@ -958,6 +1008,9 @@ def handle_message(message):
             return
         elif command == TCommand.Support:
             handle_support(message)
+            return
+        elif command == TCommand.CleanupUsers:
+            handle_cleanup_users(message)
             return
 
     # Handle button texts in user's language

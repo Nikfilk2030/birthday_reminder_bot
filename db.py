@@ -587,3 +587,185 @@ def set_user_language(chat_id: int, language_code: str) -> None:
     except sqlite3.Error as e:
         logging.error(f"Error setting user language: {e}")
         utils.log_exception(e)
+
+
+def get_inactive_users_count(days_threshold: int = 30) -> dict:
+    """
+    Count users who registered but never added any birthdays.
+
+    Args:
+        days_threshold: Number of days since registration to consider user inactive
+
+    Returns:
+        Dictionary with statistics about inactive users
+    """
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        threshold_date = (datetime.now() - timedelta(days=days_threshold)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT(DISTINCT u.chat_id) as total_registered,
+                COUNT(DISTINCT CASE WHEN b.chat_id IS NULL THEN u.chat_id END) as users_without_birthdays,
+                COUNT(DISTINCT CASE
+                    WHEN b.chat_id IS NULL
+                    AND datetime(u.created_at) <= datetime(?)
+                    THEN u.chat_id
+                END) as inactive_users
+            FROM user_reminder_settings u
+            LEFT JOIN birthdays b ON u.chat_id = b.chat_id
+            """,
+            (threshold_date,),
+        )
+
+        result = cursor.fetchone()
+        conn.close()
+
+        return {
+            "total_registered": result[0] or 0,
+            "users_without_birthdays": result[1] or 0,
+            "inactive_users": result[2] or 0,
+            "days_threshold": days_threshold,
+        }
+    except sqlite3.Error as e:
+        logging.error(f"Error counting inactive users: {e}")
+        utils.log_exception(e)
+        return {}
+
+
+def get_inactive_users(days_threshold: int = 30) -> list[int]:
+    """
+    Get list of chat_ids for users who:
+    - Are registered (have entry in user_reminder_settings or user_language_settings)
+    - Have no birthdays
+    - Were registered more than days_threshold days ago
+
+    Args:
+        days_threshold: Number of days since registration to consider user inactive
+
+    Returns:
+        List of chat_ids to be deleted
+    """
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        threshold_date = (datetime.now() - timedelta(days=days_threshold)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        cursor.execute(
+            """
+            SELECT DISTINCT u.chat_id
+            FROM user_reminder_settings u
+            LEFT JOIN birthdays b ON u.chat_id = b.chat_id
+            WHERE b.chat_id IS NULL
+            AND datetime(u.created_at) <= datetime(?)
+
+            UNION
+
+            SELECT DISTINCT l.chat_id
+            FROM user_language_settings l
+            LEFT JOIN birthdays b ON l.chat_id = b.chat_id
+            WHERE b.chat_id IS NULL
+            AND datetime(l.created_at) <= datetime(?)
+            AND l.chat_id NOT IN (
+                SELECT chat_id FROM user_reminder_settings
+            )
+            """,
+            (threshold_date, threshold_date),
+        )
+
+        chat_ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        return chat_ids
+    except sqlite3.Error as e:
+        logging.error(f"Error getting inactive users: {e}")
+        utils.log_exception(e)
+        return []
+
+
+def delete_inactive_users(chat_ids: list[int]) -> int:
+    """
+    Delete inactive users from all tables.
+    This allows them to use the bot again in the future.
+
+    Args:
+        chat_ids: List of chat_ids to delete
+
+    Returns:
+        Number of users deleted
+    """
+    if not chat_ids:
+        return 0
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        placeholders = ",".join("?" * len(chat_ids))
+
+        cursor.execute(
+            f"DELETE FROM user_reminder_settings WHERE chat_id IN ({placeholders})",
+            chat_ids,
+        )
+
+        cursor.execute(
+            f"DELETE FROM user_language_settings WHERE chat_id IN ({placeholders})",
+            chat_ids,
+        )
+
+        cursor.execute(
+            f"DELETE FROM backup_ping_settings WHERE chat_id IN ({placeholders})",
+            chat_ids,
+        )
+
+        cursor.execute(
+            f"DELETE FROM birthdays WHERE chat_id IN ({placeholders})", chat_ids
+        )
+
+        conn.commit()
+        deleted_count = len(chat_ids)
+        conn.close()
+
+        logging.info(f"Deleted {deleted_count} inactive users from database")
+        return deleted_count
+    except sqlite3.Error as e:
+        logging.error(f"Error deleting inactive users: {e}")
+        utils.log_exception(e)
+        return 0
+
+
+def cleanup_inactive_users(days_threshold: int = 30, dry_run: bool = True) -> dict:
+    """
+    Cleanup inactive users who haven't added any birthdays.
+
+    Args:
+        days_threshold: Number of days since registration to consider user inactive
+        dry_run: If True, only count users without deleting
+
+    Returns:
+        Dictionary with cleanup statistics
+    """
+    stats = get_inactive_users_count(days_threshold)
+    inactive_chat_ids = get_inactive_users(days_threshold)
+
+    result = {
+        **stats,
+        "users_to_delete": len(inactive_chat_ids),
+        "dry_run": dry_run,
+    }
+
+    if not dry_run and inactive_chat_ids:
+        deleted = delete_inactive_users(inactive_chat_ids)
+        result["users_deleted"] = deleted
+    else:
+        result["users_deleted"] = 0
+
+    return result
