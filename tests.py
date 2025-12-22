@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 import unittest
 from datetime import datetime, timedelta
@@ -8,6 +9,39 @@ import i18n
 import utils
 from utils import (get_time, is_timestamp_valid, parse_date,
                    validate_birthday_input)
+
+
+def calculate_age(birth_date: datetime, current_date: datetime = None) -> int:
+    """Calculate age from birth date, accounting for whether birthday has passed this year."""
+    if current_date is None:
+        current_date = datetime.now()
+
+    current_year = current_date.year
+    age = current_year - birth_date.year
+
+    # Check if birthday hasn't happened yet this year
+    # Handle leap year edge case (Feb 29 -> non-leap year)
+    try:
+        birthday_this_year = birth_date.replace(year=current_year)
+    except ValueError:
+        # This happens when date is Feb 29 and current_year is not a leap year
+        if birth_date.month == 2 and birth_date.day == 29:
+            birthday_this_year = datetime(current_year, 2, 28)
+        else:
+            raise
+
+    if current_date < birthday_this_year:
+        age -= 1
+
+    return age
+
+
+def extract_age_from_string(birthday_str: str) -> int:
+    """Extract age from birthday string like '15 May 1990, Test Person, _(Current age: 25 years)_'."""
+    match = re.search(r"Current age: (\d+) years", birthday_str)
+    if match:
+        return int(match.group(1))
+    return None
 
 
 class TestTimestampParser(unittest.TestCase):
@@ -312,8 +346,15 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
         birthday = db.TBirthday(select_result, need_id=False)
 
         birthday_str = str(birthday)
-        # Should show age 25 (birthday already happened)
-        self.assertIn("25 years", birthday_str)
+        # Calculate expected age dynamically
+        expected_age = calculate_age(birth_date, today)
+        actual_age = extract_age_from_string(birthday_str)
+        self.assertIsNotNone(actual_age, "Age should be present in birthday string")
+        self.assertEqual(
+            actual_age,
+            expected_age,
+            f"Age should be {expected_age} (birthday already happened)",
+        )
         self.assertIn("Test Person", birthday_str)
 
     def test_age_calculation_with_future_birthday(self):
@@ -335,8 +376,15 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
         birthday = db.TBirthday(select_result, need_id=False)
 
         birthday_str = str(birthday)
-        # Should show age 24 (birthday hasn't happened yet, so still 24)
-        self.assertIn("24 years", birthday_str)
+        # Calculate expected age dynamically (should be 24 since birthday hasn't happened yet)
+        expected_age = calculate_age(birth_date, today)
+        actual_age = extract_age_from_string(birthday_str)
+        self.assertIsNotNone(actual_age, "Age should be present in birthday string")
+        self.assertEqual(
+            actual_age,
+            expected_age,
+            f"Age should be {expected_age} (birthday hasn't happened yet)",
+        )
         self.assertIn("Test Person", birthday_str)
 
     def test_birthday_without_year(self):
@@ -391,15 +439,20 @@ class TestBirthdayAgeCalculation(unittest.TestCase):
         birthday = db.TBirthday(select_result, need_id=False)
 
         birthday_str = str(birthday)
-        # On the exact birthday, they should be 30 (birthday has happened today)
-        self.assertIn("30 years", birthday_str)
+        # Calculate expected age dynamically (on exact birthday, age should be 30)
+        expected_age = calculate_age(birth_date, today)
+        actual_age = extract_age_from_string(birthday_str)
+        self.assertIsNotNone(actual_age, "Age should be present in birthday string")
+        self.assertEqual(
+            actual_age, expected_age, f"Age should be {expected_age} on exact birthday"
+        )
 
     def test_leap_year_birthday_feb_29(self):
         """Test that Feb 29 birthday is handled correctly in non-leap years"""
         # Use a leap year for the birthday (2020 is a leap year)
         birth_date = datetime(2020, 2, 29)
 
-        # Current year is 2025 (not a leap year), so Feb 29 doesn't exist
+        # Current year may not be a leap year, so Feb 29 doesn't exist
         # Should use Feb 28 instead for comparison
         select_result = (
             1,  # id
@@ -1035,21 +1088,24 @@ class TestComputeAgeMetrics(unittest.TestCase):
 
         # Birthday already passed this year (should be current_year - birth_year)
         past_date = today - timedelta(days=30)
-        past_birthday = (
-            f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
-        )
+        birth_year = current_year - 25
+        birth_date = datetime(birth_year, past_date.month, past_date.day)
+        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {birth_year}"
 
         birthdays = [f"{past_birthday}, Test Person"]
         avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
+
+        # Calculate expected age dynamically
+        expected_age = calculate_age(birth_date, today)
 
         self.assertIsNotNone(avg)
         self.assertIsNotNone(min_val)
         self.assertIsNotNone(max_val)
         self.assertIsNotNone(median)
-        self.assertEqual(avg, 25)
-        self.assertEqual(min_val, 25)
-        self.assertEqual(max_val, 25)
-        self.assertEqual(median, 25.0)
+        self.assertEqual(avg, expected_age)
+        self.assertEqual(min_val, expected_age)
+        self.assertEqual(max_val, expected_age)
+        self.assertEqual(median, float(expected_age))
 
     def test_compute_age_with_future_birthday(self):
         """Test age computation for birthdays that haven't happened yet this year"""
@@ -1058,22 +1114,24 @@ class TestComputeAgeMetrics(unittest.TestCase):
 
         # Birthday hasn't happened yet this year (should be current_year - birth_year - 1)
         future_date = today + timedelta(days=30)
-        future_birthday = (
-            f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
-        )
+        birth_year = current_year - 30
+        birth_date = datetime(birth_year, future_date.month, future_date.day)
+        future_birthday = f"{future_date.day} {future_date.strftime('%B')} {birth_year}"
 
         birthdays = [f"{future_birthday}, Test Person"]
         avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
+
+        # Calculate expected age dynamically (they haven't had their birthday yet)
+        expected_age = calculate_age(birth_date, today)
 
         self.assertIsNotNone(avg)
         self.assertIsNotNone(min_val)
         self.assertIsNotNone(max_val)
         self.assertIsNotNone(median)
-        # They haven't had their birthday yet, so they're still 29
-        self.assertEqual(avg, 29)
-        self.assertEqual(min_val, 29)
-        self.assertEqual(max_val, 29)
-        self.assertEqual(median, 29.0)
+        self.assertEqual(avg, expected_age)
+        self.assertEqual(min_val, expected_age)
+        self.assertEqual(max_val, expected_age)
+        self.assertEqual(median, float(expected_age))
 
     def test_compute_age_with_mixed_birthdays(self):
         """Test age computation with multiple birthdays"""
@@ -1081,13 +1139,17 @@ class TestComputeAgeMetrics(unittest.TestCase):
         current_year = today.year
 
         past_date = today - timedelta(days=30)
-        past_birthday = (
-            f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
-        )
+        birth_year_past = current_year - 25
+        birth_date_past = datetime(birth_year_past, past_date.month, past_date.day)
+        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {birth_year_past}"
 
         future_date = today + timedelta(days=30)
+        birth_year_future = current_year - 30
+        birth_date_future = datetime(
+            birth_year_future, future_date.month, future_date.day
+        )
         future_birthday = (
-            f"{future_date.day} {future_date.strftime('%B')} {current_year - 30}"
+            f"{future_date.day} {future_date.strftime('%B')} {birth_year_future}"
         )
 
         birthdays = [
@@ -1097,14 +1159,22 @@ class TestComputeAgeMetrics(unittest.TestCase):
 
         avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
 
+        # Calculate expected ages dynamically
+        expected_age_past = calculate_age(birth_date_past, today)
+        expected_age_future = calculate_age(birth_date_future, today)
+        expected_min = min(expected_age_past, expected_age_future)
+        expected_max = max(expected_age_past, expected_age_future)
+        expected_avg = (expected_age_past + expected_age_future) / 2
+        expected_median = (expected_age_past + expected_age_future) / 2.0
+
         self.assertIsNotNone(avg)
         self.assertIsNotNone(min_val)
         self.assertIsNotNone(max_val)
         self.assertIsNotNone(median)
-        self.assertEqual(min_val, 25)  # Youngest person (birthday already happened)
-        self.assertEqual(max_val, 29)  # Oldest person (birthday not yet happened)
-        self.assertEqual(avg, (25 + 29) / 2)
-        self.assertEqual(median, (25 + 29) / 2.0)  # Median of [25, 29] is 27
+        self.assertEqual(min_val, expected_min)  # Youngest person
+        self.assertEqual(max_val, expected_max)  # Oldest person
+        self.assertEqual(avg, expected_avg)
+        self.assertEqual(median, expected_median)
 
     def test_compute_age_with_invalid_formats(self):
         """Test that invalid birthday formats are handled gracefully"""
@@ -1134,9 +1204,9 @@ class TestComputeAgeMetrics(unittest.TestCase):
         current_year = today.year
 
         past_date = today - timedelta(days=30)
-        past_birthday = (
-            f"{past_date.day} {past_date.strftime('%B')} {current_year - 25}"
-        )
+        birth_year = current_year - 25
+        birth_date = datetime(birth_year, past_date.month, past_date.day)
+        past_birthday = f"{past_date.day} {past_date.strftime('%B')} {birth_year}"
 
         birthdays = [
             f"{past_birthday}, Person 1",
@@ -1146,12 +1216,15 @@ class TestComputeAgeMetrics(unittest.TestCase):
 
         avg, min_val, max_val, median = utils.compute_age_metrics(birthdays)
 
+        # Calculate expected age dynamically
+        expected_age = calculate_age(birth_date, today)
+
         # Should compute metrics for the one valid birthday
         self.assertIsNotNone(avg)
-        self.assertEqual(avg, 25)
-        self.assertEqual(min_val, 25)
-        self.assertEqual(max_val, 25)
-        self.assertEqual(median, 25.0)
+        self.assertEqual(avg, expected_age)
+        self.assertEqual(min_val, expected_age)
+        self.assertEqual(max_val, expected_age)
+        self.assertEqual(median, float(expected_age))
 
 
 class TestFindMostPopularDate(unittest.TestCase):

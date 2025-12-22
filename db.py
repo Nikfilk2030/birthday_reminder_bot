@@ -473,46 +473,56 @@ def reset_birthday_reminder_flags() -> None:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
 
-        # Reset flags for birthdays that are either:
-        # 1. More than 10 days in the past
-        # 2. More than 10 days in the future
-        query = """
-            UPDATE birthdays
-            SET was_reminded_0_days_ago = FALSE,
-                was_reminded_1_days_ago = FALSE,
-                was_reminded_3_days_ago = FALSE,
-                was_reminded_7_days_ago = FALSE
-            WHERE (
-                was_reminded_0_days_ago = TRUE
-                OR was_reminded_1_days_ago = TRUE
-                OR was_reminded_3_days_ago = TRUE
-                OR was_reminded_7_days_ago = TRUE
-            )
-            AND (
-                -- Case 1: Birthday is more than 10 days in the past
-                (
-                    strftime('%m-%d', birthday) < strftime('%m-%d', date('now', '-10 days'))
-                    AND
-                    strftime('%m-%d', birthday) < strftime('%m-%d', 'now')
-                )
-                OR
-                -- Case 2: Birthday is more than 10 days in the future
-                (
-                    strftime('%m-%d', birthday) > strftime('%m-%d', date('now', '+10 days'))
-                    AND
-                    strftime('%m-%d', birthday) > strftime('%m-%d', 'now')
-                )
-            )
-        """
+        cursor.execute(
+            """
+            SELECT id, birthday FROM birthdays
+            WHERE was_reminded_0_days_ago = TRUE
+               OR was_reminded_1_days_ago = TRUE
+               OR was_reminded_3_days_ago = TRUE
+               OR was_reminded_7_days_ago = TRUE
+            """
+        )
+        rows = cursor.fetchall()
 
-        cursor.execute(query)
-        rows_affected = cursor.rowcount
-        conn.commit()
+        today = datetime.now().date()
+        ids_to_reset = []
+        for row_id, birthday_str in rows:
+            bday = datetime.strptime(birthday_str, "%Y-%m-%d").date()
 
-        if rows_affected > 0:
-            logging.info(f"Reset reminder flags for {rows_affected} birthdays")
+            this_year = _safe_replace_year(bday, today.year)
+            next_bday = (
+                this_year
+                if this_year >= today
+                else _safe_replace_year(bday, today.year + 1)
+            )
+            prev_bday = (
+                this_year
+                if this_year <= today
+                else _safe_replace_year(bday, today.year - 1)
+            )
+
+            days_until = (next_bday - today).days
+            days_since = (today - prev_bday).days
+
+            if days_until > 10 and days_since > 10:
+                ids_to_reset.append(row_id)
+
+        if ids_to_reset:
+            placeholders = ",".join("?" * len(ids_to_reset))
+            cursor.execute(
+                f"""
+                UPDATE birthdays
+                SET was_reminded_0_days_ago = FALSE,
+                    was_reminded_1_days_ago = FALSE,
+                    was_reminded_3_days_ago = FALSE,
+                    was_reminded_7_days_ago = FALSE
+                WHERE id IN ({placeholders})
+                """,
+                ids_to_reset,
+            )
+            conn.commit()
+            logging.info(f"Reset reminder flags for {cursor.rowcount} birthdays")
         conn.close()
-
     except sqlite3.Error as e:
         logging.error(f"Error resetting birthday reminder flags: {e}")
         utils.log_exception(e)
