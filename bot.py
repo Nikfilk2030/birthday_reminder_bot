@@ -47,7 +47,7 @@ bot = telebot.TeleBot(TOKEN)
 user_states = {}
 
 # Global dictionary to track messages related to birthday registration
-birthday_registration_messages = defaultdict(list)
+birthday_registration_messages = defaultdict(set)
 # Global dictionary to track messages related to birthday deletion
 birthday_deletion_messages = defaultdict(list)
 # Global dictionary to track messages related to backup registration
@@ -169,6 +169,39 @@ def safe_delete_message(chat_id: int, message_id: int) -> None:
         logging.warning(
             f"Unexpected error deleting message {message_id} in chat {chat_id}: {e}"
         )
+
+
+def safe_send_message(
+    chat_id: int, text: str, parse_mode: str = None, reply_markup=None, **kwargs
+):
+    """Safely send a message, handling Markdown parsing errors. Returns message object or None."""
+    try:
+        return bot.send_message(
+            chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs
+        )
+    except telebot.apihelper.ApiTelegramException as e:
+        if e.error_code == 400 and parse_mode == "Markdown":
+            logging.warning(
+                f"Markdown parsing error for message to {chat_id}, retrying without Markdown: {e}"
+            )
+            try:
+                return bot.send_message(
+                    chat_id, text, reply_markup=reply_markup, **kwargs
+                )
+            except Exception as retry_e:
+                logging.error(
+                    f"Failed to send message to {chat_id} even without Markdown: {retry_e}"
+                )
+                return None
+        elif e.error_code == 403:
+            logging.warning(f"Bot was blocked by user {chat_id}")
+            return None
+        else:
+            logging.error(f"Failed to send message to {chat_id}: {e}")
+            return None
+    except Exception as e:
+        logging.error(f"Unexpected error sending message to {chat_id}: {e}")
+        return None
 
 
 def remove_keyboard(message):
@@ -418,7 +451,7 @@ def handle_stats(message):
 
     stats_message = f"{local_stats}\n{global_stats}"
 
-    bot.send_message(
+    safe_send_message(
         chat_id,
         stats_message,
         parse_mode="Markdown",
@@ -475,7 +508,7 @@ def handle_start(message):
 {i18n.get_message("contribute", chat_id)}
 """
 
-    bot.send_message(
+    safe_send_message(
         chat_id,
         welcome_message,
         reply_markup=get_reply_markup(message),
@@ -483,7 +516,7 @@ def handle_start(message):
     )
     logging.debug(f"Sent welcome message to Chat ID {chat_id}")
 
-    bot.send_message(
+    safe_send_message(
         chat_id,
         f"{i18n.get_message('configure_reminders', chat_id)}\n\n{i18n.get_message('reminder_example', chat_id)}",
         reply_markup=get_reminder_settings_keyboard(chat_id),
@@ -529,7 +562,7 @@ def handle_language_callback(call):
 
     if i18n.set_user_language(chat_id, language_code):
         # Send confirmation message
-        bot.send_message(
+        safe_send_message(
             chat_id,
             i18n.get_message("language_changed", chat_id),
             parse_mode="Markdown",
@@ -606,7 +639,7 @@ def handle_successful_payment(message):
         )
 
         # Send thank you message
-        bot.send_message(
+        safe_send_message(
             chat_id,
             i18n.get_message("payment_success", chat_id, amount=payment.total_amount),
             parse_mode="Markdown",
@@ -677,7 +710,7 @@ def send_backup(message):
     birthdays_messages = utils.split_message(all_birthdays)
 
     for birthday_message in birthdays_messages:
-        bot.send_message(
+        safe_send_message(
             message.chat.id,
             birthday_message,
             parse_mode="Markdown",
@@ -770,19 +803,22 @@ def send_share_message(message):
     birthdays_messages = utils.split_message(all_birthdays)
 
     for birthday_message in birthdays_messages:
-        bot.send_message(message.chat.id, birthday_message, parse_mode="Markdown")
+        safe_send_message(message.chat.id, birthday_message, parse_mode="Markdown")
 
 
 def register_birthday(message):
     chat_id = message.chat.id
 
-    instruct_msg = bot.send_message(
+    instruct_msg = safe_send_message(
         chat_id,
         i18n.get_message("register_birthday_instructions", chat_id),
         parse_mode="Markdown",
     )
 
-    birthday_registration_messages[chat_id] = set([instruct_msg.message_id])
+    if instruct_msg:
+        birthday_registration_messages[chat_id] = set([instruct_msg.message_id])
+    else:
+        birthday_registration_messages[chat_id] = set()
     user_states[chat_id] = TUserState.AwaitingBirthday
 
 
@@ -814,7 +850,7 @@ def process_backup_pings():
                 db.update_backup_ping(chat_id)
 
                 all_birthdays = get_all_birthdays_formatted(chat_id)
-                bot.send_message(
+                safe_send_message(
                     chat_id,
                     f"{i18n.get_message('latest_backup', chat_id)}\n{all_birthdays}",
                     parse_mode="Markdown",
@@ -827,13 +863,16 @@ def process_backup_pings():
 def register_backup(message):
     chat_id = message.chat.id
 
-    msg = bot.send_message(
+    msg = safe_send_message(
         chat_id,
         i18n.get_message("enter_backup_interval", chat_id),
         parse_mode="Markdown",
     )
 
-    register_backup_messages[chat_id] = [msg.message_id]
+    if msg:
+        register_backup_messages[chat_id] = [msg.message_id]
+    else:
+        register_backup_messages[chat_id] = []
 
     user_states[chat_id] = TUserState.AwaitingInterval
 
@@ -841,7 +880,7 @@ def register_backup(message):
 def unregister_backup(message):
     chat_id = message.chat.id
     db.unregister_backup_ping(chat_id)
-    bot.send_message(
+    safe_send_message(
         chat_id,
         i18n.get_message("backup_unregistered", chat_id),
         parse_mode="Markdown",
@@ -855,17 +894,21 @@ def handle_deletion(message):
     all_birthdays = get_all_birthdays_formatted(chat_id, need_id=True)
     birthdays_messages = utils.split_message(all_birthdays)
 
-    instruct_msg = bot.send_message(
+    instruct_msg = safe_send_message(
         chat_id,
         i18n.get_message("enter_delete_ids", chat_id),
         parse_mode="Markdown",
     )
 
-    birthday_deletion_messages[chat_id] = [instruct_msg.message_id]
+    if instruct_msg:
+        birthday_deletion_messages[chat_id] = [instruct_msg.message_id]
+    else:
+        birthday_deletion_messages[chat_id] = []
 
     for birthday_message in birthdays_messages:
-        msg = bot.send_message(chat_id, birthday_message, parse_mode="Markdown")
-        birthday_deletion_messages[chat_id].append(msg.message_id)
+        msg = safe_send_message(chat_id, birthday_message, parse_mode="Markdown")
+        if msg:
+            birthday_deletion_messages[chat_id].append(msg.message_id)
 
     user_states[chat_id] = TUserState.AwaitingDeletion
 
@@ -873,7 +916,7 @@ def handle_deletion(message):
 def handle_support(message):
     """Handle support command - show donation options"""
     chat_id = message.chat.id
-    bot.send_message(
+    safe_send_message(
         chat_id,
         i18n.get_message("support_description", chat_id),
         reply_markup=get_support_keyboard(chat_id),
@@ -929,7 +972,7 @@ def handle_callback_query(call):
         elif command == TCommand.Share:
             send_share_message(message)
         elif command == TCommand.Language:
-            bot.send_message(
+            safe_send_message(
                 chat_id,
                 i18n.get_button_text("language", chat_id),
                 reply_markup=get_language_keyboard(),
@@ -1028,7 +1071,7 @@ def handle_message(message):
 
                 db.register_backup_ping(chat_id, interval_in_minutes)
 
-                bot.send_message(
+                safe_send_message(
                     chat_id,
                     i18n.get_message(
                         "backup_registered", chat_id, interval=interval_in_minutes
@@ -1047,13 +1090,14 @@ def handle_message(message):
                     del register_backup_messages[chat_id]
 
             except Exception:
-                error_msg = bot.send_message(
+                error_msg = safe_send_message(
                     chat_id,
                     i18n.get_message("invalid_interval_format", chat_id),
                     parse_mode="Markdown",
                 )
 
-                register_backup_messages[chat_id].append(error_msg.message_id)
+                if error_msg:
+                    register_backup_messages[chat_id].append(error_msg.message_id)
 
         case TUserState.AwaitingDeletion:
             try:
@@ -1071,7 +1115,7 @@ def handle_message(message):
                         not_found_ids.append(birthday_id)
 
                 if deleted_ids:
-                    bot.send_message(
+                    safe_send_message(
                         chat_id,
                         i18n.get_message(
                             "birthdays_deleted",
@@ -1082,7 +1126,7 @@ def handle_message(message):
                     )
 
                 if not_found_ids:
-                    bot.send_message(
+                    safe_send_message(
                         chat_id,
                         i18n.get_message(
                             "birthdays_not_found",
@@ -1106,12 +1150,13 @@ def handle_message(message):
                     del birthday_deletion_messages[chat_id]
 
             except ValueError:
-                error_msg = bot.send_message(
+                error_msg = safe_send_message(
                     chat_id,
                     i18n.get_message("invalid_ids_format", chat_id),
                     parse_mode="Markdown",
                 )
-                birthday_deletion_messages[chat_id].append(error_msg.message_id)
+                if error_msg:
+                    birthday_deletion_messages[chat_id].append(error_msg.message_id)
             except Exception as e:
                 logging.error(f"Error deleting birthdays for Chat ID {chat_id}: {e}")
 
@@ -1121,12 +1166,13 @@ def handle_message(message):
                     user_message, chat_id
                 )
                 if not success:
-                    err_msg = bot.send_message(
+                    err_msg = safe_send_message(
                         chat_id,
                         error_message,
                         parse_mode="Markdown",
                     )
-                    birthday_registration_messages[chat_id].add(err_msg.message_id)
+                    if err_msg:
+                        birthday_registration_messages[chat_id].add(err_msg.message_id)
                     return
 
                 success, parsed_birthdays = utils.parse_dates(user_message)
@@ -1142,7 +1188,7 @@ def handle_message(message):
                     else:
                         birthday_msg += f"- {name}: {parsed_date.strftime('%d %B')}\n"
 
-                bot.send_message(
+                safe_send_message(
                     chat_id,
                     f"{i18n.get_message('birthdays_registered', chat_id)}\n{birthday_msg}",
                     parse_mode="Markdown",
@@ -1159,7 +1205,7 @@ def handle_message(message):
                     del birthday_registration_messages[chat_id]
 
             except Exception:
-                bot.send_message(
+                safe_send_message(
                     chat_id,
                     i18n.get_message("invalid_name_format", chat_id),
                     parse_mode="Markdown",
