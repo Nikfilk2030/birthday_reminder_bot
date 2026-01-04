@@ -148,13 +148,36 @@ def is_group_chat(message) -> bool:
     return message.chat.type in ["group", "supergroup"]
 
 
+def safe_delete_message(chat_id: int, message_id: int) -> None:
+    """Safely delete a message, handling all possible exceptions."""
+    try:
+        bot.delete_message(chat_id, message_id)
+    except telebot.apihelper.ApiTelegramException as e:
+        if e.error_code == 400:
+            logging.debug(
+                f"Message {message_id} in chat {chat_id} cannot be deleted (likely already deleted or too old)"
+            )
+        elif e.error_code == 403:
+            logging.debug(
+                f"Bot doesn't have permission to delete message {message_id} in chat {chat_id}"
+            )
+        else:
+            logging.warning(
+                f"Failed to delete message {message_id} in chat {chat_id}: {e}"
+            )
+    except Exception as e:
+        logging.warning(
+            f"Unexpected error deleting message {message_id} in chat {chat_id}: {e}"
+        )
+
+
 def remove_keyboard(message):
     delete_message = bot.send_message(
         message.chat.id,
         i18n.get_message("keyboard_removed", message.chat.id),
         reply_markup=ReplyKeyboardRemove(),
     )
-    bot.delete_message(delete_message.chat.id, delete_message.message_id)
+    safe_delete_message(delete_message.chat.id, delete_message.message_id)
 
 
 def get_reply_markup(message) -> InlineKeyboardMarkup | None:
@@ -408,8 +431,7 @@ def handle_start(message):
     chat_id = message.chat.id
     user_states[chat_id] = TUserState.Default
 
-    # remove /start command itself
-    bot.delete_message(chat_id, message.message_id)
+    safe_delete_message(chat_id, message.message_id)
 
     # Remove any existing keyboard
     remove_keyboard(message)
@@ -723,14 +745,20 @@ def process_birthday_pings():
                             bot.send_message(chat_id, reminder_text)
                             db.mark_birthday_reminder_sent(id, days_until)
                         except telebot.apihelper.ApiTelegramException as e:
-                            if e.error_code == 403:  # Bot was blocked by the user
+                            if e.error_code == 403:
                                 logging.warning(
                                     f"Bot was blocked by user {chat_id}, skipping notifications"
                                 )
-                                # Mark reminder as sent to avoid retrying
                                 db.mark_birthday_reminder_sent(id, days_until)
                             else:
-                                raise  # Re-raise other API exceptions
+                                logging.error(
+                                    f"Telegram API error sending reminder to {chat_id}: {e}"
+                                )
+                        except Exception as e:
+                            logging.error(
+                                f"Error sending reminder to {chat_id} for birthday {id}: {e}"
+                            )
+                            utils.log_exception(e)
 
         except Exception as e:
             logging.error(f"Error during birthday ping processing: {e}")
@@ -923,9 +951,7 @@ def handle_message(message):
     user_message = message.text.strip()
 
     if user_message == "/clear":
-        # Secret command to clear keyboard
-        bot.delete_message(chat_id, message.message_id)
-        # Remove keyboard and clean up that message
+        safe_delete_message(chat_id, message.message_id)
         remove_keyboard(message)
         return
 
@@ -1012,10 +1038,10 @@ def handle_message(message):
 
                 user_states[chat_id] = TUserState.Default
 
-                bot.delete_message(chat_id, message.message_id)
+                safe_delete_message(chat_id, message.message_id)
 
                 for old_message_id in register_backup_messages[chat_id]:
-                    bot.delete_message(chat_id, old_message_id)
+                    safe_delete_message(chat_id, old_message_id)
 
                 if chat_id in register_backup_messages.keys():
                     del register_backup_messages[chat_id]
@@ -1074,7 +1100,7 @@ def handle_message(message):
                 birthday_deletion_messages[chat_id].append(message.message_id)
 
                 for old_message_id in birthday_deletion_messages[chat_id]:
-                    bot.delete_message(chat_id, old_message_id)
+                    safe_delete_message(chat_id, old_message_id)
 
                 if chat_id in birthday_deletion_messages.keys():
                     del birthday_deletion_messages[chat_id]
@@ -1124,10 +1150,10 @@ def handle_message(message):
 
                 user_states[chat_id] = TUserState.Default
 
-                bot.delete_message(chat_id, message.message_id)
+                safe_delete_message(chat_id, message.message_id)
 
                 for old_message_id in birthday_registration_messages[chat_id]:
-                    bot.delete_message(chat_id, old_message_id)
+                    safe_delete_message(chat_id, old_message_id)
 
                 if chat_id in birthday_registration_messages.keys():
                     del birthday_registration_messages[chat_id]
@@ -1171,7 +1197,14 @@ if __name__ == "__main__":
         log_cleaner_thread = threading.Thread(target=log_cleaner, daemon=True)
         log_cleaner_thread.start()
 
-        bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
+        while True:
+            try:
+                bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
+            except Exception as e:
+                logging.error(f"Bot polling error: {e}")
+                utils.log_exception(e)
+                logging.info("Restarting bot polling in 10 seconds...")
+                time.sleep(10)
 
     except KeyboardInterrupt:
         logging.info("Shutting down bot gracefully...")

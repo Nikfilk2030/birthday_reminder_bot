@@ -221,7 +221,6 @@ def log_exception(exc: Exception):
     Helper function to log exception details with full traceback.
     """
     logging.error(f"An exception occurred: {exc}", exc_info=True)
-    raise exc
 
 
 def is_daytime():
